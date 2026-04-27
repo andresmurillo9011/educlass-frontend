@@ -264,6 +264,7 @@ export default function App() {
   const [est_respuesta,setEst_respuesta]=useState("");
   const [est_archivo,setEst_archivo]=useState(null);
   const [est_enviando,setEst_enviando]=useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [est_calificacion,setEst_calificacion]=useState(null);
   const archivoRef=useRef();
 
@@ -638,7 +639,7 @@ export default function App() {
                   </div>
                   <div style={{display:"flex",gap:7,flexShrink:0}}>
                     <button style={{...S.btnSm,color:C.azulC,borderColor:C.azul}} onClick={()=>verEntregas(t)}>📊 Ver entregas</button>
-                    <button style={{...S.btnSm,color:C.ok,borderColor:C.verde}} onClick={()=>{navigator.clipboard.writeText(`http://localhost:3000?codigo=${t.codigo}`);alert("Link copiado ✅");}}>🔗 Copiar link</button>
+                    <button style={{...S.btnSm,color:C.ok,borderColor:C.verde}} onClick={()=>{navigator.clipboard.writeText(`https://educlass-frontend.vercel.app?codigo=${t.codigo}`);alert("Link copiado ✅");}}>🔗 Copiar link</button>
                     <button style={{...S.btnSm,color:C.err,borderColor:C.rojo}} onClick={()=>eliminarTarea(t.id)}>🗑</button>
                   </div>
                 </div>
@@ -687,9 +688,9 @@ export default function App() {
               <p style={{color:C.ok,fontWeight:"bold",fontSize:18,margin:"0 0 8px"}}>✅ Tarea creada exitosamente</p>
               <p style={{color:C.texto,margin:"0 0 4px"}}><strong>Título:</strong> {tareaCreada.tarea?.titulo}</p>
               <p style={{color:C.texto,margin:"0 0 4px"}}><strong>Código de acceso:</strong> <span style={{color:C.naranja,fontSize:20,fontWeight:"bold"}}>{tareaCreada.tarea?.codigo}</span></p>
-              <p style={{color:C.texto,margin:"0 0 12px"}}><strong>Link directo:</strong> <span style={{color:C.azulC,fontSize:13}}>http://localhost:3000?codigo={tareaCreada.tarea?.codigo}</span></p>
+              <p style={{color:C.texto,margin:"0 0 12px"}}><strong>Link directo:</strong> <span style={{color:C.azulC,fontSize:13}}>https://educlass-frontend.vercel.app?codigo={tareaCreada.tarea?.codigo}</span></p>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{navigator.clipboard.writeText(`http://localhost:3000?codigo=${tareaCreada.tarea?.codigo}`);alert("Link copiado ✅");}}>🔗 Copiar link</button>
+                <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{navigator.clipboard.writeText(`https://educlass-frontend.vercel.app?codigo=${tareaCreada.tarea?.codigo}`);alert("Link copiado ✅");}}>🔗 Copiar link</button>
                 <button style={{...S.btnNaranja,width:"auto",padding:"9px 16px"}} onClick={()=>{
                   const txt=tareaCreada.estudiantes?.map(e=>`${e.nombre} | Usuario: ${e.usuario} | Contraseña: ${e.password}`).join("\n");
                   navigator.clipboard.writeText(`TAREA: ${tareaCreada.tarea?.titulo}\nCódigo: ${tareaCreada.tarea?.codigo}\n\nCREDENCIALES:\n${txt}`);
@@ -717,7 +718,7 @@ export default function App() {
                 </tbody>
               </table>
             </div>
-            <p style={{color:C.textoS,fontSize:12,margin:"12px 0 16px"}}>💡 Comparte el código y las credenciales con cada estudiante. Ellos ingresan en: <strong>http://localhost:3000?codigo={tareaCreada.tarea?.codigo}</strong></p>
+            <p style={{color:C.textoS,fontSize:12,margin:"12px 0 16px"}}>💡 Comparte el código y las credenciales con cada estudiante. Ellos ingresan en: <strong>https://educlass-frontend.vercel.app?codigo={tareaCreada.tarea?.codigo}</strong></p>
             <div style={S.fila}>
               <button style={S.btnVerde} onClick={()=>{setTareaCreada(null);setNuevaTarea_titulo("");setNuevaTarea_desc("");setEstudiantesTexto("");setNuevaTarea_fecha("");setVista("tareas");}}>Ir a mis tareas</button>
               <button style={S.btnGris} onClick={()=>{setTareaCreada(null);setNuevaTarea_titulo("");setNuevaTarea_desc("");setEstudiantesTexto("");setNuevaTarea_fecha("");}}>+ Crear otra tarea</button>
