@@ -310,11 +310,16 @@ export default function App() {
   const [ntTipo,setNtTipo]=useState("taller");
   const [ntArea,setNtArea]=useState("");
   const [ntGrado,setNtGrado]=useState("");
+  const [ntAsignacion,setNtAsignacion]=useState("grado"); // grado | individual
+  const [ntGradoSel,setNtGradoSel]=useState("");
   const [ntEstudiantes,setNtEstudiantes]=useState("");
   const [ntActividad,setNtActividad]=useState(null);
   const [generandoAct,setGenerandoAct]=useState(false);
   const [tareaCreada,setTareaCreada]=useState(null);
   const [creandoTarea,setCreandoTarea]=useState(false);
+  const [gradosDisp,setGradosDisp]=useState([]);
+  const [estsPorGrado,setEstsPorGrado]=useState([]);
+  const [estSelIds,setEstSelIds]=useState([]);
 
   // ── Portal estudiante ─────────────────────────────────
   const [estVista,setEstVista]=useState("login"); // login, registro, dashboard, resolver
@@ -415,6 +420,11 @@ export default function App() {
     if(!estTareaActiva||!estSesion)return;
     const tieneRespuestas = Object.keys(estRespuestas).length>0||estRespuestaTexto||estArchivo;
     if(!tieneRespuestas){alert("Debes responder al menos una pregunta o subir un archivo");return;}
+    // Check deadline
+    if(estTareaActiva.fechaEntrega){
+      const deadline=new Date(estTareaActiva.fechaEntrega+"T23:59:59");
+      if(new Date()>deadline){alert("⏰ La fecha de entrega ya venció. No se puede entregar.");return;}
+    }
     setEstEnviando(true);
     try{
       const form=new FormData();
@@ -425,8 +435,16 @@ export default function App() {
       if(estArchivo)form.append("archivo",estArchivo);
       const r=await fetch(`${API}/entregar-tarea`,{method:"POST",body:form});
       const d=await r.json();
-      if(r.ok){setEstYaEntrego(true);setEstEntregaData(d.entrega);alert("¡Tarea entregada exitosamente! ✅");cargarTareasEst(estSesion.id);}
-      else alert(d.mensaje);
+      if(r.ok){
+        setEstYaEntrego(true);
+        setEstEntregaData(d.entrega);
+        if(d.autoCalificada){
+          alert(`✅ Entregado y calificado automáticamente.\n\nNota: ${d.notaAuto}\n${d.resultadoDetalle?.correctas||0}/${d.resultadoDetalle?.total||0} respuestas correctas`);
+        } else {
+          alert("¡Tarea entregada exitosamente! ✅");
+        }
+        cargarTareasEst(estSesion.id);
+      }else alert(d.mensaje);
     }catch{alert("Error enviando tarea");}
     setEstEnviando(false);
   };
@@ -445,15 +463,28 @@ export default function App() {
   };
 
   const crearTarea=async()=>{
-    if(!ntTitulo||!ntEstudiantes){alert("Completa el título y la lista de estudiantes");return;}
+    if(!ntTitulo){alert("Completa el título");return;}
+    if(ntAsignacion==="grado"&&!ntGradoSel){alert("Selecciona el grado");return;}
     setCreandoTarea(true);
     const lista=ntEstudiantes.split("\n").map(s=>s.trim()).filter(s=>s.length>0);
     try{
-      const r=await fetch(`${API}/crear-tarea`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({docenteId:usuario.id,titulo:ntTitulo,descripcion:ntDesc,tipo:ntTipo,actividad:ntActividad,area:ntArea,grado:ntGrado,fechaEntrega:ntFecha,estudiantesLista:lista})});
+      const body={docenteId:usuario.id,titulo:ntTitulo,descripcion:ntDesc,tipo:ntTipo,actividad:ntActividad,
+                  area:ntArea,grado:ntGradoSel||ntGrado,fechaEntrega:ntFecha,estudiantesLista:lista,
+                  asignarGrado:ntAsignacion==="grado"?ntGradoSel:"manual",
+                  estudiantesRegIds:ntAsignacion==="individual"?estSelIds:[]};
+      const r=await fetch(`${API}/crear-tarea`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){setTareaCreada(d);cargarTareas(usuario.id);}else alert(d.mensaje);
     }catch{alert("Error creando tarea");}
     setCreandoTarea(false);
+  };
+
+  const cargarGrados=async()=>{
+    try{const r=await fetch(`${API}/grados-disponibles`);const d=await r.json();setGradosDisp(d.grados||[]);}catch(_){}
+  };
+  const cargarEstsPorGrado=async(grado)=>{
+    if(!grado)return;
+    try{const r=await fetch(`${API}/estudiantes-grado/${grado}`);const d=await r.json();setEstsPorGrado(d.estudiantes||[]);}catch(_){}
   };
 
   const verEntregas=async(t)=>{
@@ -602,14 +633,16 @@ export default function App() {
                       <span style={{background:TIPOS_ACTIVIDAD.find(x=>x.id===t.tipo)?.id?C.morado:C.azul,color:"#fff",fontSize:10,padding:"2px 8px",borderRadius:20}}>{TIPOS_ACTIVIDAD.find(x=>x.id===t.tipo)?.label||t.tipo}</span>
                     </div>
                     <p style={{color:C.textoS,fontSize:12,margin:"0 0 4px"}}>{t.area} · Grado {t.grado}{t.fechaEntrega&&` · 📅 ${t.fechaEntrega}`}</p>
+                    {t.vencida&&!t.entregada&&<p style={{color:C.err,fontSize:12,margin:0,fontWeight:"bold"}}>⏰ Fecha vencida — No se puede entregar</p>}
                     {t.entregada&&(
                       <p style={{color:t.calificacion!=null?C.naranja:C.ok,fontSize:12,margin:0,fontWeight:"bold"}}>
-                        {t.calificacion!=null?`✅ Calificado: ${t.calificacion}${t.comentario?` — ${t.comentario}`:""}` :"✅ Entregado — Pendiente de calificación"}
+                        {t.calificacion!=null?`✅ Nota: ${t.calificacion}${t.comentario?` — ${t.comentario}`:""}` :"✅ Entregado — Pendiente de calificación"}
                       </p>
                     )}
+                    {!t.entregada&&!t.vencida&&t.fechaEntrega&&<p style={{color:C.naranja,fontSize:11,margin:0}}>📅 Entregar antes del: {t.fechaEntrega}</p>}
                   </div>
-                  <button style={{...S.btnSm,color:t.entregada?C.textoS:C.azulC,borderColor:t.entregada?C.borde:C.azul}} onClick={()=>resolverTarea(t)}>
-                    {t.entregada?"👁 Ver":"📝 Resolver"}
+                  <button style={{...S.btnSm,color:(t.entregada||t.vencida)?C.textoS:C.azulC,borderColor:(t.entregada||t.vencida)?C.borde:C.azul}} onClick={()=>resolverTarea(t)}>
+                    {t.entregada?"👁 Ver":t.vencida?"⏰ Vencida":"📝 Resolver"}
                   </button>
                 </div>
               </div>
@@ -638,15 +671,27 @@ export default function App() {
 
             {estYaEntrego?(
               <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:10,padding:16}}>
-                <p style={{color:C.ok,fontWeight:"bold",fontSize:15,margin:"0 0 6px"}}>✅ Tarea entregada exitosamente</p>
+                <p style={{color:C.ok,fontWeight:"bold",fontSize:15,margin:"0 0 10px"}}>✅ Tarea entregada</p>
                 {estEntregaData?.calificacion!=null?(
                   <>
                     <p style={{color:C.texto,fontSize:13,margin:"0 0 4px"}}>Tu calificación:</p>
-                    <p style={{color:C.naranja,fontSize:26,fontWeight:"bold",margin:"0 0 6px",fontFamily:F_TITULO}}>{estEntregaData.calificacion}</p>
-                    {estEntregaData.comentario&&<p style={{color:C.textoS,fontSize:13,margin:0,fontStyle:"italic"}}>💬 {estEntregaData.comentario}</p>}
+                    <p style={{color:C.naranja,fontSize:30,fontWeight:"bold",margin:"0 0 4px",fontFamily:F_TITULO}}>{estEntregaData.calificacion}</p>
+                    <p style={{color:C.textoS,fontSize:12,margin:"0 0 8px"}}>{estEntregaData.comentario}</p>
+                    {estEntregaData.resultadoDetalle&&(
+                      <div style={{marginTop:12}}>
+                        <p style={{color:C.texto,fontWeight:"bold",fontSize:13,margin:"0 0 8px"}}>Detalle de respuestas:</p>
+                        {estEntregaData.resultadoDetalle.detalle?.map((d,i)=>(
+                          <div key={i} style={{background:d.esCorrecta?"#052e16":"#2d0a0a",borderRadius:7,padding:"7px 10px",marginBottom:6,border:`1px solid ${d.esCorrecta?C.ok:C.err}`}}>
+                            <p style={{color:C.texto,fontSize:12,margin:"0 0 3px"}}>{i+1}. {d.pregunta}</p>
+                            <p style={{color:d.esCorrecta?C.ok:C.err,fontSize:12,margin:"0 0 2px"}}>{d.esCorrecta?"✅":"❌"} Tu respuesta: <strong>{d.respEst||"Sin respuesta"}</strong></p>
+                            {!d.esCorrecta&&<p style={{color:C.textoS,fontSize:11,margin:0}}>Correcta: {d.respCorrecta}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 ):(
-                  <p style={{color:C.textoS,fontSize:13,margin:0}}>Tu docente aún no ha calificado. Vuelve más tarde.</p>
+                  <p style={{color:C.textoS,fontSize:13,margin:0}}>Tu docente revisará tu trabajo pronto.</p>
                 )}
               </div>
             ):(
@@ -876,10 +921,48 @@ export default function App() {
               )}
             </div>
 
-            {/* Lista estudiantes */}
-            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>3. Lista de estudiantes (uno por línea)</p>
-            <textarea style={{...S.textarea,minHeight:160}} placeholder={"Juan Pérez\nMaría García\nCarlos López\n..."} value={ntEstudiantes} onChange={e=>setNtEstudiantes(e.target.value)}/>
-            <p style={{color:C.textoS,fontSize:12,margin:"6px 0 16px"}}>{ntEstudiantes.split("\n").filter(s=>s.trim()).length} estudiantes</p>
+            {/* Asignación */}
+            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>3. ¿A quién asignar?</p>
+            <div style={{...S.fila,marginBottom:14}}>
+              <div style={{...S.opcion(ntAsignacion==="grado"),flex:1}} onClick={()=>{setNtAsignacion("grado");cargarGrados();}}><p style={S.oLbl}>🎓 Por grado completo</p><p style={S.oDesc}>Se asigna a todos los estudiantes del grado</p></div>
+              <div style={{...S.opcion(ntAsignacion==="individual"),flex:1}} onClick={()=>{setNtAsignacion("individual");cargarGrados();}}><p style={S.oLbl}>👤 Individual</p><p style={S.oDesc}>Selecciona estudiantes específicos</p></div>
+            </div>
+            {ntAsignacion==="grado"&&(
+              <div style={{marginBottom:14}}>
+                <p style={S.label}>Selecciona el grado</p>
+                <select style={S.select} value={ntGradoSel} onChange={e=>{setNtGradoSel(e.target.value);setNtArea(ntArea);setNtGrado(e.target.value);}}>
+                  <option value="">Seleccionar grado...</option>
+                  {gradosDisp.map(g=><option key={g} value={g}>Grado {g}°</option>)}
+                </select>
+              </div>
+            )}
+            {ntAsignacion==="individual"&&(
+              <div style={{marginBottom:14}}>
+                <div style={S.fila}>
+                  <div style={{flex:1}}>
+                    <p style={S.label}>Grado para buscar</p>
+                    <select style={S.select} value={ntGradoSel} onChange={e=>{setNtGradoSel(e.target.value);cargarEstsPorGrado(e.target.value);setEstSelIds([]);}}>
+                      <option value="">Seleccionar...</option>
+                      {gradosDisp.map(g=><option key={g} value={g}>Grado {g}°</option>)}
+                    </select>
+                  </div>
+                </div>
+                {estsPorGrado.length>0&&(
+                  <div style={{marginTop:10,maxHeight:200,overflowY:"auto",background:"#0a1128",borderRadius:8,border:`1px solid ${C.borde}`,padding:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                      <p style={{color:C.textoS,fontSize:12,margin:0}}>{estSelIds.length} seleccionados</p>
+                      <button style={{...S.btnSm,fontSize:11}} onClick={()=>setEstSelIds(estsPorGrado.map(e=>e.id))}>Todos</button>
+                    </div>
+                    {estsPorGrado.map(e=>(
+                      <div key={e.id} style={{...S.opcion(estSelIds.includes(e.id)),padding:"7px 10px",marginBottom:4}} onClick={()=>setEstSelIds(prev=>prev.includes(e.id)?prev.filter(x=>x!==e.id):[...prev,e.id])}>
+                        <p style={{...S.oLbl,fontSize:12}}>{e.nombre}</p>
+                        <p style={{...S.oDesc,fontSize:10}}>Doc: {e.documento}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <button style={{...S.btnVerde,opacity:creandoTarea?0.7:1}} disabled={creandoTarea} onClick={crearTarea}>
               {creandoTarea?"⏳ Creando...":"✅ Crear tarea y generar credenciales"}
@@ -963,7 +1046,15 @@ export default function App() {
                       <p style={{color:C.texto,fontWeight:"bold",margin:"0 0 3px"}}>{e.nombreEstudiante}</p>
                       <p style={{color:C.textoS,fontSize:11,margin:"0 0 5px"}}>📅 {new Date(e.entregadoEn).toLocaleString("es-CO")}</p>
                       {e.respuesta&&<p style={{color:"#CBD5E1",fontSize:12,margin:"0 0 5px",fontStyle:"italic",background:"#0d1528",padding:"6px 10px",borderRadius:6}}>"{e.respuesta.substring(0,150)}{e.respuesta.length>150?"...":""}"</p>}
-                      {e.respuestasActividad&&<p style={{color:C.textoS,fontSize:11,margin:"0 0 5px"}}>📝 {Object.keys(e.respuestasActividad).length} respuestas de actividad</p>}
+                      {e.respuestasActividad&&e.resultadoDetalle&&(
+                        <div style={{marginTop:6}}>
+                          <p style={{color:C.textoS,fontSize:11,margin:"0 0 4px"}}>📊 {e.resultadoDetalle.correctas}/{e.resultadoDetalle.total} correctas — {e.resultadoDetalle.porcentaje}%</p>
+                          {e.resultadoDetalle.detalle?.slice(0,3).map((d,i)=>(
+                            <p key={i} style={{color:d.esCorrecta?C.ok:C.err,fontSize:11,margin:"0 0 2px"}}>{d.esCorrecta?"✅":"❌"} P{i+1}: {d.respEst}</p>
+                          ))}
+                        </div>
+                      )}
+                      {e.respuestasActividad&&!e.resultadoDetalle&&<p style={{color:C.textoS,fontSize:11,margin:"0 0 5px"}}>📝 {Object.keys(e.respuestasActividad).length} respuestas</p>}
                       {e.archivoNombre&&<p style={{color:C.azulC,fontSize:11,margin:0}}>📎 {e.archivoNombre}</p>}
                       {e.calificacion!=null&&<p style={{color:C.naranja,fontWeight:"bold",margin:"5px 0 0"}}>✅ Nota: {e.calificacion}{e.comentario&&` — ${e.comentario}`}</p>}
                     </div>
