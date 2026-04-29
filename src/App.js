@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 
-const API = "http://localhost:5000";
+const API = "https://educlass-backend-production-92e6.up.railway.app";
 const F_TITULO = "Georgia, 'Times New Roman', serif";
 const F_CUERPO = "'Segoe UI', Arial, sans-serif";
 
