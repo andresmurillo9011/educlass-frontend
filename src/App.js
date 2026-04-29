@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 
-const API = "https://educlass-backend-production-92e6.up.railway.app";
+const API = "http://localhost:5000";
 const F_TITULO = "Georgia, 'Times New Roman', serif";
 const F_CUERPO = "'Segoe UI', Arial, sans-serif";
 
@@ -330,6 +330,10 @@ export default function App() {
   const [generandoAct,setGenerandoAct]=useState(false);
   const [tareaCreada,setTareaCreada]=useState(null);
   const [creandoTarea,setCreandoTarea]=useState(false);
+  const [ntGradoFiltro,setNtGradoFiltro]=useState("");
+  const [ntBusqEst,setNtBusqEst]=useState("");
+  const [ntEstsLista,setNtEstsLista]=useState([]);
+  const [ntEstSelIds,setNtEstSelIds]=useState([]);
 
   // ── Portal estudiante ─────────────────────────────────
   const [estVista,setEstVista]=useState("login"); // login, registro, dashboard, resolver
@@ -487,13 +491,15 @@ export default function App() {
 
   const crearTarea=async()=>{
     if(!ntTitulo){alert("Completa el título");return;}
-    const lista=ntEstudiantes.split("\n").map(s=>s.trim()).filter(s=>s.length>0);
-    if(lista.length===0){alert("Agrega al menos un estudiante");return;}
+    if(ntEstSelIds.length===0){alert("Selecciona al menos un estudiante");return;}
     setCreandoTarea(true);
     try{
-      const body={docenteId:usuario.id,titulo:ntTitulo,descripcion:ntDesc,tipo:ntTipo,
-                  actividad:ntActividad,area:ntArea,grado:ntGrado,fechaEntrega:ntFecha,
-                  estudiantesLista:lista};
+      const body={
+        docenteId:usuario.id,titulo:ntTitulo,descripcion:ntDesc,tipo:ntTipo,
+        actividad:ntActividad,area:ntArea,grado:ntGrado,fechaEntrega:ntFecha,
+        estudiantesLista:[],
+        estudiantesRegIds:ntEstSelIds
+      };
       const r=await fetch(`${API}/crear-tarea`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){setTareaCreada(d);cargarTareas(usuario.id);}else alert(d.mensaje);
@@ -865,7 +871,7 @@ export default function App() {
         <div style={S.bloque}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
             <h2 style={S.tBloque}>📋 Gestión de Tareas</h2>
-            <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setVista("crear_tarea");}}>+ Nueva tarea</button>
+            <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setNtEstSelIds([]);setNtEstsLista([]);setNtGradoFiltro("");setNtBusqEst("");setVista("crear_tarea");}}>+ Nueva tarea</button>
           </div>
           {misTareas.length===0?(
             <div style={{textAlign:"center",padding:"36px 20px"}}>
@@ -912,69 +918,148 @@ export default function App() {
         {!tareaCreada?(
           <div style={S.bloque}>
             <button style={{...S.btnSm,marginBottom:16}} onClick={()=>setVista("tareas")}>← Volver</button>
-            <h2 style={S.tBloque}>+ Nueva tarea para estudiantes</h2>
+            <h2 style={S.tBloque}>+ Nueva tarea</h2>
 
-            {/* Tipo de actividad */}
-            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>1. Tipo de actividad</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8,marginBottom:18}}>
+            {/* PASO 1: Tipo */}
+            <p style={{color:C.textoS,fontSize:12,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 10px"}}>1. Tipo de actividad</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8,marginBottom:20}}>
               {TIPOS_ACTIVIDAD.map(t=>(
                 <div key={t.id} style={S.opcion(ntTipo===t.id)} onClick={()=>setNtTipo(t.id)}>
-                  <p style={S.oLbl}>{t.label}</p>
-                  <p style={S.oDesc}>{t.desc}</p>
+                  <p style={S.oLbl}>{t.label}</p><p style={S.oDesc}>{t.desc}</p>
                 </div>
               ))}
             </div>
 
-            {/* Datos básicos */}
-            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>2. Información de la tarea</p>
-            <div style={{marginBottom:12}}><p style={S.label}>Título *</p><input style={S.input} placeholder="Ej: Quiz sobre el verbo to be" value={ntTitulo} onChange={e=>setNtTitulo(e.target.value)}/></div>
-            <div style={{marginBottom:12}}><p style={S.label}>Instrucciones para el estudiante</p><textarea style={S.textarea} placeholder="Escribe las instrucciones detalladas..." value={ntDesc} onChange={e=>setNtDesc(e.target.value)}/></div>
+            {/* PASO 2: Info */}
+            <p style={{color:C.textoS,fontSize:12,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 10px"}}>2. Información</p>
+            <div style={{marginBottom:10}}><p style={S.label}>Título *</p><input style={S.input} placeholder="Ej: Quiz sobre ecosistemas" value={ntTitulo} onChange={e=>setNtTitulo(e.target.value)}/></div>
+            <div style={{marginBottom:10}}><p style={S.label}>Instrucciones</p><textarea style={{...S.textarea,minHeight:70}} placeholder="Instrucciones para el estudiante..." value={ntDesc} onChange={e=>setNtDesc(e.target.value)}/></div>
             <div style={{...S.fila,marginBottom:16}}>
               <div style={{flex:1}}><p style={S.label}>Área</p><select style={S.select} value={ntArea} onChange={e=>setNtArea(e.target.value)}><option value="">Seleccionar</option>{["Ciencias Naturales","Ciencias Sociales","Matemáticas","Lengua Castellana","Inglés","Educación Física","Artística","Ética","Tecnología","Filosofía","Química","Física","Biología"].map(m=><option key={m}>{m}</option>)}</select></div>
-              <div style={{flex:1}}><p style={S.label}>Grado</p><select style={S.select} value={ntGrado} onChange={e=>setNtGrado(e.target.value)}><option value="">Seleccionar</option>{["Transición","1°","2°","3°","4°","5°","6°","7°","8°","9°","10°","11°"].map(g=><option key={g}>{g}</option>)}</select></div>
-              <div style={{flex:1}}><p style={S.label}>Fecha de entrega</p><input type="date" style={S.input} value={ntFecha} onChange={e=>setNtFecha(e.target.value)}/></div>
+              <div style={{flex:1}}><p style={S.label}>Grado</p><select style={S.select} value={ntGrado} onChange={e=>setNtGrado(e.target.value)}><option value="">Seleccionar</option>{["6","7","8","9","10","11"].map(g=><option key={g} value={g}>Grado {g}°</option>)}</select></div>
+              <div style={{flex:1}}><p style={S.label}>Fecha entrega</p><input type="date" style={S.input} value={ntFecha} onChange={e=>setNtFecha(e.target.value)}/></div>
             </div>
 
-            {/* Generar actividad con IA */}
-            <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:16,marginBottom:18}}>
-              <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 8px",fontSize:14}}>🤖 Generar actividad con IA</p>
-              <p style={{color:C.textoS,fontSize:13,margin:"0 0 10px"}}>
-                La IA genera las preguntas automáticamente según el título, área y grado que escribiste arriba.
-              </p>
-              {(!ntTitulo||!ntArea||!ntGrado)&&(
-                <p style={{color:C.naranja,fontSize:12,margin:"0 0 10px"}}>
-                  ⚠️ Necesitas: {!ntTitulo?"título ":""}{!ntArea?"área ":""}{!ntGrado?"grado":""}
-                </p>
-              )}
-              <button style={{...S.btnAzul,opacity:(generandoAct||!ntTitulo||!ntArea||!ntGrado)?0.6:1}}
-                disabled={generandoAct||!ntTitulo||!ntArea||!ntGrado}
-                onClick={generarActividad}>
-                {generandoAct?"⏳ Generando preguntas...":"✨ Generar actividad con IA"}
+            {/* PASO 3: Generar con IA */}
+            <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:14,marginBottom:20}}>
+              <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 6px",fontSize:13}}>🤖 Generar preguntas con IA (opcional)</p>
+              {(!ntTitulo||!ntArea||!ntGrado)&&<p style={{color:C.naranja,fontSize:12,margin:"0 0 8px"}}>⚠️ Completa título, área y grado primero</p>}
+              <button style={{...S.btnAzul,opacity:(generandoAct||!ntTitulo||!ntArea||!ntGrado)?0.5:1}} disabled={generandoAct||!ntTitulo||!ntArea||!ntGrado} onClick={generarActividad}>
+                {generandoAct?"⏳ Generando...":"✨ Generar actividad con IA"}
               </button>
               {ntActividad&&(
-                <div style={{marginTop:12,background:"#0a1128",borderRadius:8,padding:12}}>
-                  <p style={{color:C.ok,fontWeight:"bold",margin:"0 0 8px",fontSize:13}}>✅ Actividad generada — Vista previa:</p>
+                <div style={{marginTop:10,background:"#0a1128",borderRadius:8,padding:10}}>
+                  <p style={{color:C.ok,fontWeight:"bold",margin:"0 0 6px",fontSize:12}}>✅ {(ntActividad.preguntas||ntActividad.pares||[]).length} preguntas generadas</p>
                   {(ntActividad.preguntas||ntActividad.pares||[]).slice(0,3).map((p,i)=>(
-                    <p key={i} style={{color:C.textoS,fontSize:12,margin:"0 0 4px"}}>
-                      {i+1}. {p.pregunta||p.enunciado||p.afirmacion||p.columnaA}
-                    </p>
+                    <p key={i} style={{color:C.textoS,fontSize:11,margin:"0 0 3px"}}>{i+1}. {p.pregunta||p.enunciado||p.afirmacion||p.columnaA}</p>
                   ))}
-                  {(ntActividad.preguntas||ntActividad.pares||[]).length>3&&<p style={{color:C.textoS,fontSize:12,margin:0}}>... y {(ntActividad.preguntas||ntActividad.pares||[]).length-3} más</p>}
+                  {(ntActividad.preguntas||ntActividad.pares||[]).length>3&&<p style={{color:C.textoS,fontSize:11,margin:0}}>... y {(ntActividad.preguntas||ntActividad.pares||[]).length-3} más</p>}
                 </div>
               )}
             </div>
 
-            {/* Lista estudiantes */}
-            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>3. Lista de estudiantes (uno por línea)</p>
-            <p style={{color:C.textoS,fontSize:12,margin:"0 0 8px"}}>El sistema genera usuario y contraseña para cada uno. Comparte el <strong>código de acceso</strong> con los estudiantes.</p>
-            <textarea style={{...S.textarea,minHeight:160}}
-              placeholder={"Juan Pérez\nMaría García\nCarlos López\nAna Martínez\n..."}
-              value={ntEstudiantes}
-              onChange={e=>setNtEstudiantes(e.target.value)}/>
-            <p style={{color:C.textoS,fontSize:12,margin:"6px 0 16px"}}>{ntEstudiantes.split("\n").filter(s=>s.trim()).length} estudiantes ingresados</p>
+            {/* PASO 4: Asignar estudiantes */}
+            <p style={{color:C.textoS,fontSize:12,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 10px"}}>3. Asignar estudiantes</p>
+
+            {/* Filtro por grado */}
+            <div style={{...S.fila,marginBottom:10,alignItems:"flex-end"}}>
+              <div style={{flex:1}}>
+                <p style={S.label}>Filtrar por grado</p>
+                <select style={S.select} value={ntGradoFiltro} onChange={async e=>{
+                  setNtGradoFiltro(e.target.value);
+                  setNtEstSelIds([]);
+                  if(e.target.value){
+                    try{
+                      const r=await fetch(`${API}/estudiantes-grado/${e.target.value}`);
+                      const d=await r.json();
+                      setNtEstsLista(d.estudiantes||[]);
+                    }catch(_){setNtEstsLista([]);}
+                  } else setNtEstsLista([]);
+                }}>
+                  <option value="">— Ver todos los grados —</option>
+                  {["06","07","08","09","10","11"].map(g=><option key={g} value={g}>Grado {g}°</option>)}
+                </select>
+              </div>
+              <div style={{flex:1}}>
+                <p style={S.label}>Buscar por nombre</p>
+                <input style={S.input} placeholder="Escribe el nombre..." value={ntBusqEst}
+                  onChange={async e=>{
+                    setNtBusqEst(e.target.value);
+                    if(e.target.value.length>=2){
+                      try{
+                        const r=await fetch(`${API}/buscar-estudiante?q=${encodeURIComponent(e.target.value)}`);
+                        const d=await r.json();
+                        setNtEstsLista(d.estudiantes||[]);
+                        setNtGradoFiltro("");
+                      }catch(_){}
+                    } else if(ntGradoFiltro){
+                      // keep grade filter
+                    } else setNtEstsLista([]);
+                  }}/>
+              </div>
+            </div>
+
+            {/* Lista estudiantes con checkboxes */}
+            <div style={{background:"#0a1128",borderRadius:10,border:`1px solid ${C.borde}`,overflow:"hidden",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:"#0d1528",borderBottom:`1px solid ${C.borde}`}}>
+                <p style={{color:C.azulC,fontSize:13,margin:0,fontWeight:"bold"}}>
+                  {ntEstsLista.length>0?`${ntEstsLista.length} estudiantes`:"Selecciona un grado o busca un nombre"}
+                </p>
+                {ntEstsLista.length>0&&(
+                  <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                    <span style={{color:C.ok,fontSize:12,fontWeight:"bold"}}>{ntEstSelIds.length} seleccionados</span>
+                    <button style={{...S.btnSm,fontSize:11,color:C.azulC,borderColor:C.azul}}
+                      onClick={()=>setNtEstSelIds(ntEstSelIds.length===ntEstsLista.length?[]:ntEstsLista.map(e=>e.id))}>
+                      {ntEstSelIds.length===ntEstsLista.length?"☐ Ninguno":"☑ Todos"}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div style={{maxHeight:260,overflowY:"auto",padding:"6px"}}>
+                {ntEstsLista.length===0?(
+                  <div style={{textAlign:"center",padding:"28px 20px"}}>
+                    <p style={{fontSize:28,margin:"0 0 8px"}}>👥</p>
+                    <p style={{color:C.textoS,fontSize:13,margin:0}}>
+                      Selecciona un grado o escribe un nombre para ver estudiantes
+                    </p>
+                  </div>
+                ):(
+                  ntEstsLista.map(e=>{
+                    const sel=ntEstSelIds.includes(e.id);
+                    return(
+                      <div key={e.id}
+                        onClick={()=>setNtEstSelIds(p=>sel?p.filter(x=>x!==e.id):[...p,e.id])}
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:8,
+                                cursor:"pointer",marginBottom:3,transition:"all 0.15s",
+                                background:sel?"#0f2a47":"transparent",
+                                border:`1px solid ${sel?C.azulC:"transparent"}`}}>
+                        <div style={{width:20,height:20,borderRadius:5,flexShrink:0,
+                                     border:`2px solid ${sel?C.azulC:C.borde}`,
+                                     background:sel?C.azulC:"transparent",
+                                     display:"flex",alignItems:"center",justifyContent:"center"}}>
+                          {sel&&<span style={{color:"#fff",fontSize:13,lineHeight:1}}>✓</span>}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <p style={{color:sel?C.texto:"#94A3B8",fontSize:13,margin:0,fontWeight:sel?"600":"400"}}>{e.nombre}</p>
+                          <p style={{color:C.textoS,fontSize:11,margin:0}}>Grado {e.grado}° · Doc: {e.documento}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {ntEstSelIds.length>0&&(
+              <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:8,padding:"8px 14px",marginBottom:16}}>
+                <p style={{color:C.ok,fontSize:13,margin:0,fontWeight:"bold"}}>
+                  ✅ {ntEstSelIds.length} estudiante{ntEstSelIds.length!==1?"s":""} seleccionado{ntEstSelIds.length!==1?"s":""}
+                </p>
+              </div>
+            )}
 
             <button style={{...S.btnVerde,opacity:creandoTarea?0.7:1}} disabled={creandoTarea} onClick={crearTarea}>
-              {creandoTarea?"⏳ Creando...":"✅ Crear tarea y generar credenciales"}
+              {creandoTarea?"⏳ Creando...":"✅ Crear tarea"}
             </button>
           </div>
         ):(
