@@ -325,17 +325,11 @@ export default function App() {
   const [ntTipo,setNtTipo]=useState("taller");
   const [ntArea,setNtArea]=useState("");
   const [ntGrado,setNtGrado]=useState("");
-  const [ntAsignacion,setNtAsignacion]=useState("grado"); // grado | individual
-  const [ntGradoSel,setNtGradoSel]=useState("");
   const [ntEstudiantes,setNtEstudiantes]=useState("");
   const [ntActividad,setNtActividad]=useState(null);
   const [generandoAct,setGenerandoAct]=useState(false);
   const [tareaCreada,setTareaCreada]=useState(null);
   const [creandoTarea,setCreandoTarea]=useState(false);
-  const [gradosDisp,setGradosDisp]=useState([]);
-  const [estsPorGrado,setEstsPorGrado]=useState([]);
-  const [estSelIds,setEstSelIds]=useState([]);
-  const [busqEst,setBusqEst]=useState("");
 
   // ── Portal estudiante ─────────────────────────────────
   const [estVista,setEstVista]=useState("login"); // login, registro, dashboard, resolver
@@ -480,15 +474,13 @@ export default function App() {
 
   const crearTarea=async()=>{
     if(!ntTitulo){alert("Completa el título");return;}
-    if(ntAsignacion==="grado"&&!ntGradoSel){alert("Selecciona el grado");return;}
-    if(ntAsignacion==="individual"&&estSelIds.length===0){alert("Selecciona al menos un estudiante de la lista");return;}
-    setCreandoTarea(true);
     const lista=ntEstudiantes.split("\n").map(s=>s.trim()).filter(s=>s.length>0);
+    if(lista.length===0){alert("Agrega al menos un estudiante");return;}
+    setCreandoTarea(true);
     try{
-      const body={docenteId:usuario.id,titulo:ntTitulo,descripcion:ntDesc,tipo:ntTipo,actividad:ntActividad,
-                  area:ntArea,grado:ntGradoSel||ntGrado,fechaEntrega:ntFecha,estudiantesLista:lista,
-                  asignarGrado:ntAsignacion==="grado"?ntGradoSel:"manual",
-                  estudiantesRegIds:ntAsignacion==="individual"?estSelIds:[]};
+      const body={docenteId:usuario.id,titulo:ntTitulo,descripcion:ntDesc,tipo:ntTipo,
+                  actividad:ntActividad,area:ntArea,grado:ntGrado,fechaEntrega:ntFecha,
+                  estudiantesLista:lista};
       const r=await fetch(`${API}/crear-tarea`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){setTareaCreada(d);cargarTareas(usuario.id);}else alert(d.mensaje);
@@ -496,29 +488,7 @@ export default function App() {
     setCreandoTarea(false);
   };
 
-  const cargarGrados=async()=>{
-    try{
-      const r=await fetch(`${API}/grados-disponibles`);
-      const d=await r.json();
-      setGradosDisp(d.grados||[]);
-    }catch(e){console.error("cargarGrados error:",e);}
-  };
-  const cargarEstsPorGrado=async(grado)=>{
-    if(!grado)return;
-    try{
-      const r=await fetch(`${API}/estudiantes-grado/${encodeURIComponent(grado)}`);
-      const d=await r.json();
-      setEstsPorGrado(d.estudiantes||[]);
-    }catch(e){console.error("cargarEstsPorGrado error:",e);}
-  };
-  const buscarEstudiante=async(q)=>{
-    if(!q||q.length<2){setEstsPorGrado([]);return;}
-    try{
-      const r=await fetch(`${API}/buscar-estudiante?q=${encodeURIComponent(q)}`);
-      const d=await r.json();
-      setEstsPorGrado(d.estudiantes||[]);
-    }catch(e){console.error("buscarEstudiante error:",e);}
-  };
+
 
   const [listadoCompleto,setListadoCompleto]=useState([]);
   const [filtroEntregas,setFiltroEntregas]=useState("todos"); // todos|entregaron|pendientes
@@ -882,7 +852,7 @@ export default function App() {
         <div style={S.bloque}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
             <h2 style={S.tBloque}>📋 Gestión de Tareas</h2>
-            <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setNtAsignacion("individual");setNtGradoSel("");setEstSelIds([]);setEstsPorGrado([]);setBusqEst("");setVista("crear_tarea");}}>+ Nueva tarea</button>
+            <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setVista("crear_tarea");}}>+ Nueva tarea</button>
           </div>
           {misTareas.length===0?(
             <div style={{textAlign:"center",padding:"36px 20px"}}>
@@ -972,48 +942,14 @@ export default function App() {
               )}
             </div>
 
-            {/* Asignación */}
-            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>3. ¿A quién asignar?</p>
-            <div style={{...S.fila,marginBottom:14}}>
-              <div style={{...S.opcion(ntAsignacion==="grado"),flex:1}} onClick={()=>{setNtAsignacion("grado");cargarGrados();}}><p style={S.oLbl}>🎓 Por grado completo</p><p style={S.oDesc}>Se asigna a todos los estudiantes del grado</p></div>
-              <div style={{...S.opcion(ntAsignacion==="individual"),flex:1}} onClick={()=>{setNtAsignacion("individual");cargarGrados();}}><p style={S.oLbl}>👤 Individual</p><p style={S.oDesc}>Selecciona estudiantes específicos</p></div>
-            </div>
-            {ntAsignacion==="grado"&&(
-              <div style={{marginBottom:14}}>
-                <p style={S.label}>Selecciona el grado</p>
-                <select style={S.select} value={ntGradoSel} onChange={e=>{setNtGradoSel(e.target.value);setNtArea(ntArea);setNtGrado(e.target.value);}}>
-                  <option value="">Seleccionar grado...</option>
-                  {gradosDisp.map(g=><option key={g} value={g}>Grado {g}°</option>)}
-                </select>
-              </div>
-            )}
-            {ntAsignacion==="individual"&&(
-              <div style={{marginBottom:14}}>
-                <div style={S.fila}>
-                  <div style={{flex:1}}>
-                    <p style={S.label}>Grado para buscar</p>
-                    <select style={S.select} value={ntGradoSel} onChange={e=>{setNtGradoSel(e.target.value);cargarEstsPorGrado(e.target.value);setEstSelIds([]);}}>
-                      <option value="">Seleccionar...</option>
-                      {gradosDisp.map(g=><option key={g} value={g}>Grado {g}°</option>)}
-                    </select>
-                  </div>
-                </div>
-                {estsPorGrado.length>0&&(
-                  <div style={{marginTop:10,maxHeight:200,overflowY:"auto",background:"#0a1128",borderRadius:8,border:`1px solid ${C.borde}`,padding:8}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                      <p style={{color:C.textoS,fontSize:12,margin:0}}>{estSelIds.length} seleccionados</p>
-                      <button style={{...S.btnSm,fontSize:11}} onClick={()=>setEstSelIds(estsPorGrado.map(e=>e.id))}>Todos</button>
-                    </div>
-                    {estsPorGrado.map(e=>(
-                      <div key={e.id} style={{...S.opcion(estSelIds.includes(e.id)),padding:"7px 10px",marginBottom:4}} onClick={()=>setEstSelIds(prev=>prev.includes(e.id)?prev.filter(x=>x!==e.id):[...prev,e.id])}>
-                        <p style={{...S.oLbl,fontSize:12}}>{e.nombre}</p>
-                        <p style={{...S.oDesc,fontSize:10}}>Doc: {e.documento}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Lista estudiantes */}
+            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>3. Lista de estudiantes (uno por línea)</p>
+            <p style={{color:C.textoS,fontSize:12,margin:"0 0 8px"}}>El sistema genera usuario y contraseña para cada uno. Comparte el <strong>código de acceso</strong> con los estudiantes.</p>
+            <textarea style={{...S.textarea,minHeight:160}}
+              placeholder={"Juan Pérez\nMaría García\nCarlos López\nAna Martínez\n..."}
+              value={ntEstudiantes}
+              onChange={e=>setNtEstudiantes(e.target.value)}/>
+            <p style={{color:C.textoS,fontSize:12,margin:"6px 0 16px"}}>{ntEstudiantes.split("\n").filter(s=>s.trim()).length} estudiantes ingresados</p>
 
             <button style={{...S.btnVerde,opacity:creandoTarea?0.7:1}} disabled={creandoTarea} onClick={crearTarea}>
               {creandoTarea?"⏳ Creando...":"✅ Crear tarea y generar credenciales"}
@@ -1049,7 +985,7 @@ export default function App() {
             </div>
             <div style={{...S.fila,marginTop:16}}>
               <button style={S.btnVerde} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setVista("tareas");}}>Ir a mis tareas</button>
-              <button style={S.btnGris} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);}}>+ Otra tarea</button>
+              <button style={S.btnGris} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);}}>+ Crear otra</button>
             </div>
           </div>
         )}
