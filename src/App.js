@@ -461,14 +461,27 @@ export default function App() {
 
   // ── Generar actividad IA ──────────────────────────────
   const generarActividad=async()=>{
-    if(!ntTipo||!ntArea||!ntGrado){alert("Selecciona tipo, área y grado primero");return;}
+    if(!ntTitulo){alert("Escribe el título de la tarea primero (será el tema de la actividad)");return;}
+    if(!ntArea){alert("Selecciona el área primero");return;}
+    if(!ntGrado){alert("Selecciona el grado primero");return;}
     setGenerandoAct(true);
     try{
-      const r=await fetch(`${API}/generar-actividad`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tipo:ntTipo,tema:ntTitulo||"Tema general",area:ntArea,grado:ntGrado,cantidad:5})});
+      const r=await fetch(`${API}/generar-actividad`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({tipo:ntTipo,tema:ntTitulo,area:ntArea,grado:ntGrado,cantidad:5})
+      });
+      if(!r.ok){alert("Error en el servidor al generar actividad");setGenerandoAct(false);return;}
       const d=await r.json();
-      if(d.ok)setNtActividad(d.actividad);
-      else alert("Error generando actividad");
-    }catch{alert("Error generando actividad");}
+      if(d.ok&&d.actividad){
+        setNtActividad(d.actividad);
+      } else {
+        alert("No se pudo generar la actividad. Verifica que el servidor esté activo.");
+      }
+    }catch(e){
+      alert("Error de conexión. Verifica que el backend esté funcionando.");
+      console.error(e);
+    }
     setGenerandoAct(false);
   };
 
@@ -925,8 +938,17 @@ export default function App() {
             {/* Generar actividad con IA */}
             <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:16,marginBottom:18}}>
               <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 8px",fontSize:14}}>🤖 Generar actividad con IA</p>
-              <p style={{color:C.textoS,fontSize:13,margin:"0 0 12px"}}>La IA crea automáticamente las preguntas según el tipo seleccionado, el área y el tema.</p>
-              <button style={{...S.btnAzul,opacity:generandoAct?0.7:1}} disabled={generandoAct} onClick={generarActividad}>
+              <p style={{color:C.textoS,fontSize:13,margin:"0 0 10px"}}>
+                La IA genera las preguntas automáticamente según el título, área y grado que escribiste arriba.
+              </p>
+              {(!ntTitulo||!ntArea||!ntGrado)&&(
+                <p style={{color:C.naranja,fontSize:12,margin:"0 0 10px"}}>
+                  ⚠️ Necesitas: {!ntTitulo?"título ":""}{!ntArea?"área ":""}{!ntGrado?"grado":""}
+                </p>
+              )}
+              <button style={{...S.btnAzul,opacity:(generandoAct||!ntTitulo||!ntArea||!ntGrado)?0.6:1}}
+                disabled={generandoAct||!ntTitulo||!ntArea||!ntGrado}
+                onClick={generarActividad}>
                 {generandoAct?"⏳ Generando preguntas...":"✨ Generar actividad con IA"}
               </button>
               {ntActividad&&(
