@@ -1,128 +1,183 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef } from "react";
 
 const API = "https://educlass-backend-production-92e6.up.railway.app";
-const FT  = "Georgia, 'Times New Roman', serif";
-const FC  = "'Segoe UI', Arial, sans-serif";
+const F_TITULO = "Georgia, 'Times New Roman', serif";
+const F_CUERPO = "'Segoe UI', Arial, sans-serif";
 
-// ── Constantes ────────────────────────────────────────
-const GRADOS_SISTEMA = ["6°","7°","8°","9°","10°","11°"];
-
+// ── Tipos de actividad ────────────────────────────────
 const TIPOS_ACTIVIDAD = [
-  { id:"taller",         label:"📝 Taller",              desc:"Preguntas abiertas" },
-  { id:"evaluacion",     label:"📊 Evaluación",           desc:"Mixta" },
-  { id:"quiz",           label:"⚡ Quiz",                 desc:"Selección múltiple" },
-  { id:"completar",      label:"✏️ Completar",            desc:"Espacios en blanco" },
-  { id:"verdadero_falso",label:"✅ Verdadero / Falso",    desc:"Afirmaciones" },
-  { id:"relacionar",     label:"🔗 Relacionar",           desc:"Columna A-B" },
+  { id:"taller",        label:"📝 Taller",              desc:"Preguntas abiertas de desarrollo" },
+  { id:"evaluacion",    label:"📊 Evaluación",           desc:"Mixta: selección, completar y abierta" },
+  { id:"quiz",          label:"⚡ Quiz",                 desc:"Selección múltiple con respuesta correcta" },
+  { id:"completar",     label:"✏️ Completar la oración", desc:"Espacios en blanco para llenar" },
+  { id:"verdadero_falso",label:"✅ Verdadero / Falso",   desc:"Afirmaciones para clasificar" },
+  { id:"relacionar",    label:"🔗 Relacionar conceptos", desc:"Unir columna A con columna B" },
 ];
 
-const OPT_P_APERTURA   = [{id:"cuento_p",label:"📚 Cuento pedagógico",desc:"Historia creativa"},{id:"cancion",label:"🎵 Canción / rima",desc:"Para motivar"},{id:"pregunta",label:"❓ Pregunta impactante",desc:"Genera asombro"},{id:"video",label:"🎬 Video sugerido",desc:"YouTube"},{id:"imagen",label:"🖼️ Imagen contextual",desc:"Pedagógica"},{id:"juego_i",label:"🎮 Juego de inicio",desc:"Dinámica lúdica"}];
-const OPT_P_DESARROLLO  = [{id:"juego_s",label:"🎯 Sopa de letras",desc:"Vocabulario"},{id:"bingo",label:"🎰 Bingo educativo",desc:"Conceptos"},{id:"memoria",label:"🧠 Memoria conceptual",desc:"Pares"},{id:"manualidad",label:"✂️ Manualidad",desc:"Maqueta"},{id:"descubr",label:"🔍 Por descubrimiento",desc:"Experimento"},{id:"rincones",label:"🏫 Rincones",desc:"Estaciones"},{id:"roles_p",label:"🎭 Juego de roles",desc:"Personajes"},{id:"lluvia_p",label:"💭 Lluvia de ideas",desc:"Aportes libres"}];
-const OPT_P_RETRO       = [{id:"vf",label:"✅ V/F",desc:"Afirmaciones"},{id:"completar",label:"📝 Completar",desc:"Párrafo"},{id:"dibujo_r",label:"🎨 Dibujo evaluativo",desc:"Dibujar"},{id:"preguntas",label:"❓ Preguntas rápidas",desc:"5 directas"},{id:"relacionar",label:"🔗 Relacionar",desc:"Columnas"},{id:"ruleta",label:"🎡 Ruleta",desc:"Al azar"}];
-const OPT_B_APERTURA    = [{id:"problema",label:"🧩 Situación problema",desc:"Caso real"},{id:"dato",label:"🔢 Dato curioso",desc:"Sorprendente"},{id:"pregunta",label:"❓ Pregunta impactante",desc:"Crítico"},{id:"video",label:"🎬 Video sugerido",desc:"YouTube"},{id:"noticia",label:"📰 Noticia actual",desc:"Reciente"},{id:"debate_i",label:"⚖️ Debate inicial",desc:"Postura"}];
-const OPT_B_DESARROLLO  = [{id:"magistral",label:"🎓 Clase magistral",desc:"Explicación"},{id:"abp",label:"🧩 ABP",desc:"Problemas"},{id:"debate_b",label:"⚖️ Debate",desc:"Posturas"},{id:"caso_b",label:"🔬 Estudio de caso",desc:"Analizar"},{id:"proyecto_b",label:"📁 Proyecto",desc:"Interdisciplinar"},{id:"invertida",label:"🔄 Clase invertida",desc:"Teoría en casa"},{id:"simulacion",label:"🎮 Simulación",desc:"Lab/juicio"},{id:"mapa_av",label:"🗺️ Mapa conceptual",desc:"Síntesis"}];
-const OPT_B_RETRO       = [{id:"caso",label:"🔍 Caso práctico",desc:"Análisis"},{id:"ensayo_c",label:"✍️ Ensayo corto",desc:"Argumentativo"},{id:"preguntas",label:"❓ Análisis",desc:"Crítico"},{id:"relacionar",label:"🔗 Relacionar",desc:"Columnas"},{id:"vf",label:"✅ V/F",desc:"Afirmaciones"},{id:"debate_r",label:"💬 Debate corto",desc:"Posiciones"}];
-const OPT_CIERRE        = [{id:"resumen",label:"📋 Resumen colectivo",desc:"Entre todos"},{id:"metacog",label:"💭 Metacognición",desc:"¿Qué aprendí?"},{id:"mapa_c",label:"🗺️ Mapa mental",desc:"Organizan"},{id:"compromiso",label:"🤝 Compromiso",desc:"¿Cómo aplicaré?"},{id:"ticket",label:"🎫 Ticket de salida",desc:"1 aprendizaje"}];
-const OPT_TAREA         = [{id:"investiga",label:"🔎 Investigación",desc:"Fuentes"},{id:"entrevista",label:"🎤 Entrevista",desc:"En casa"},{id:"dibujo",label:"🎨 Dibujo",desc:"Visual"},{id:"redaccion",label:"✏️ Redacción",desc:"Párrafo"},{id:"video_c",label:"📱 Video",desc:"Grabar"}];
-const OPT_DURACION      = [{val:"55",label:"1 hora (55 min)"},{val:"110",label:"2 horas (110 min)"},{val:"165",label:"3 horas (165 min)"},{val:"220",label:"4 horas (220 min)"}];
+// ── Estrategias ───────────────────────────────────────
+const OPT_P_APERTURA=[
+  {id:"cuento_p",label:"📚 Cuento pedagógico",desc:"Historia creativa relacionada con el tema"},
+  {id:"cancion",label:"🎵 Canción / rima",desc:"Rima o canción para motivar"},
+  {id:"pregunta_exp",label:"❓ Preguntas exploratorias",desc:"Activan los saberes previos"},
+  {id:"sqa",label:"📊 SQA",desc:"¿Qué sé? ¿Qué quiero saber? ¿Qué aprendí?"},
+  {id:"lluvia_ap",label:"💭 Lluvia de ideas",desc:"Aportes libres sobre el tema"},
+  {id:"focal",label:"🎯 Actividad focal introductoria",desc:"Objeto o situación que genera curiosidad"},
+  {id:"video",label:"🎬 Video sugerido",desc:"Video real de YouTube sobre el tema"},
+  {id:"juego_i",label:"🎮 Juego de inicio",desc:"Dinámica lúdica para captar atención"},
+];
+const OPT_P_DESARROLLO=[
+  {id:"mapa_mental",label:"🗺️ Mapa mental",desc:"Organizar ideas visualmente"},
+  {id:"cuadro_comp",label:"📊 Cuadro comparativo",desc:"Comparar conceptos y características"},
+  {id:"analogo",label:"🔄 Analogía",desc:"Comparar con algo conocido"},
+  {id:"juego_s",label:"🎯 Sopa de letras",desc:"Vocabulario en sopa de letras"},
+  {id:"bingo",label:"🎰 Bingo educativo",desc:"Conceptos clave en bingo"},
+  {id:"manualidad",label:"✂️ Manualidad educativa",desc:"Maqueta, dibujo o cartel"},
+  {id:"descubr",label:"🔍 Aprendizaje por descubrimiento",desc:"Experimento sencillo"},
+  {id:"roles_p",label:"🎭 Juego de roles",desc:"Representar personajes"},
+  {id:"coop",label:"🤝 Aprendizaje cooperativo",desc:"Trabajo en equipo con roles"},
+  {id:"contrato",label:"📝 Contrato de aprendizaje",desc:"El estudiante planea su aprendizaje"},
+];
+const OPT_P_RETRO=[
+  {id:"vf",label:"✅ Verdadero / Falso",desc:"Afirmaciones para validar"},
+  {id:"completar",label:"📝 Completar espacios",desc:"Párrafo con espacios en blanco"},
+  {id:"dibujo_r",label:"🎨 Dibujo evaluativo",desc:"Representar visualmente lo aprendido"},
+  {id:"preguntas",label:"❓ Preguntas rápidas",desc:"5 preguntas directas orales o escritas"},
+  {id:"relacionar",label:"🔗 Relacionar conceptos",desc:"Unir columna A con columna B"},
+  {id:"parafraseo",label:"✍️ Parafraseo",desc:"Explicar con sus propias palabras"},
+  {id:"sqa_r",label:"📊 SQA — cierre",desc:"Completar la columna ¿qué aprendí?"},
+];
+const OPT_B_APERTURA=[
+  {id:"problema",label:"🧩 Situación problema",desc:"Caso real de Colombia"},
+  {id:"sqa",label:"📊 SQA",desc:"¿Qué sé? ¿Qué quiero saber? ¿Qué aprendí?"},
+  {id:"pregunta_lit",label:"❓ Preguntas literales y guía",desc:"Preguntas para orientar el aprendizaje"},
+  {id:"focal_b",label:"🎯 Actividad focal",desc:"Objeto/imagen que genera preguntas"},
+  {id:"dato",label:"🔢 Dato curioso",desc:"Datos sorprendentes y verificables"},
+  {id:"noticia",label:"📰 Noticia actual",desc:"Noticia reciente de Colombia"},
+  {id:"debate_i",label:"⚖️ Debate inicial",desc:"Planteamiento de postura inicial"},
+  {id:"video",label:"🎬 Video sugerido",desc:"Video de YouTube contextualizado"},
+];
+const OPT_B_DESARROLLO=[
+  {id:"abp",label:"🧩 ABP — Basado en Problemas",desc:"Resolver problema real"},
+  {id:"abpr",label:"📁 ABPr — Basado en Proyectos",desc:"Producto final interdisciplinario"},
+  {id:"caso_b",label:"🔬 Estudio de caso",desc:"Analizar situaciones reales"},
+  {id:"debate_b",label:"⚖️ Debate / Simposio",desc:"Defender posturas con argumentos"},
+  {id:"mapa_av",label:"🗺️ Mapa conceptual",desc:"Síntesis estructurada del contenido"},
+  {id:"cuadro_sinop",label:"📊 Cuadro sinóptico / Ishikawa",desc:"Organizar causas y efectos"},
+  {id:"invertida",label:"🔄 Aula invertida",desc:"Teoría en casa, práctica en clase"},
+  {id:"simulacion",label:"🎮 Simulación / Juego de roles",desc:"Empresas, juicios, laboratorio"},
+  {id:"coop_b",label:"🤝 Aprendizaje cooperativo",desc:"Grupos con roles definidos"},
+  {id:"contrato_b",label:"📝 Contrato de aprendizaje",desc:"El estudiante diseña su proceso"},
+  {id:"magistral",label:"🎓 Clase magistral",desc:"Explicación guiada con participación"},
+  {id:"panel",label:"🎤 Panel / Foro / Mesa redonda",desc:"Discusión académica estructurada"},
+];
+const OPT_B_RETRO=[
+  {id:"caso",label:"🔍 Caso práctico",desc:"Análisis crítico de situación real"},
+  {id:"ensayo_c",label:"✍️ Ensayo argumentativo",desc:"Párrafo con tesis y argumentos"},
+  {id:"matriz_i",label:"📊 Matriz de inducción",desc:"Encontrar patrones en datos"},
+  {id:"ishikawa",label:"🌿 Diagrama Ishikawa",desc:"Causa-efecto del tema trabajado"},
+  {id:"mapa_c_r",label:"🗺️ Mapa conceptual",desc:"Construir mapa del tema"},
+  {id:"preguntas",label:"❓ Preguntas de análisis",desc:"Pensamiento crítico profundo"},
+  {id:"debate_r",label:"💬 Debate / Coloquio",desc:"Defender posiciones con evidencias"},
+  {id:"sqa_b",label:"📊 SQA cierre",desc:"Completar ¿qué aprendí?"},
+];
+const OPT_CIERRE=[
+  {id:"ticket",label:"🎫 Ticket de salida",desc:"1 aprendizaje + 1 duda + 1 compromiso"},
+  {id:"metacog",label:"💭 Metacognición",desc:"¿Qué aprendí? ¿Cómo? ¿Para qué?"},
+  {id:"mapa_c",label:"🗺️ Mapa mental final",desc:"Organizar visualmente lo aprendido"},
+  {id:"resumen",label:"📋 Resumen / Síntesis colectiva",desc:"Construir resumen entre todos"},
+  {id:"compromiso",label:"🤝 Compromiso de aplicación",desc:"¿Cómo aplicaré esto en mi vida?"},
+  {id:"sqa_cierre",label:"📊 SQA — columna final",desc:"Completar qué aprendí del SQA"},
+  {id:"cuadro_sinop_c",label:"📊 Cuadro sinóptico",desc:"Organizar el contenido en esquema"},
+];
+const OPT_TAREA=[
+  {id:"investiga",label:"🔎 Investigación libre",desc:"Consultar fuentes"},
+  {id:"entrevista",label:"🎤 Entrevista familiar",desc:"Preguntar en casa"},
+  {id:"dibujo",label:"🎨 Dibujo / esquema",desc:"Representar visualmente"},
+  {id:"redaccion",label:"✏️ Redacción",desc:"Escribir párrafo"},
+  {id:"video_c",label:"📱 Video explicativo",desc:"Grabar explicación"},
+];
+const OPT_DURACION=[
+  {val:"55",label:"1 hora (55 min)"},
+  {val:"110",label:"2 horas (110 min)"},
+  {val:"165",label:"3 horas (165 min)"},
+  {val:"220",label:"4 horas (220 min)"},
+];
 
-// ── Colores ───────────────────────────────────────────
-const C = {
-  fondo:"#0e1420", panel:"#0a1128", tarjeta:"#111827", borde:"#1e2d45",
-  azul:"#2563EB",  azulC:"#60A5FA", verde:"#059669",  verdeC:"#34D399",
-  texto:"#F1F5F9", textoS:"#64748B", err:"#F87171",   ok:"#4ADE80",
-  naranja:"#F59E0B",morado:"#7C3AED",rojo:"#DC2626",  dorado:"#D97706",
+const C={
+  fondo:"#0e1420",panel:"#0a1128",tarjeta:"#111827",borde:"#1e2d45",
+  azul:"#2563EB",azulC:"#60A5FA",verde:"#059669",verdeC:"#34D399",
+  texto:"#F1F5F9",textoS:"#64748B",err:"#F87171",ok:"#4ADE80",
+  naranja:"#F59E0B",morado:"#7C3AED",rojo:"#DC2626",dorado:"#D97706",
+};
+const S={
+  pantalla:{minHeight:"100vh",background:C.fondo,display:"flex",justifyContent:"center",alignItems:"center",fontFamily:F_CUERPO},
+  fondo:{minHeight:"100vh",background:C.fondo,fontFamily:F_CUERPO,color:C.texto},
+  header:{background:C.panel,padding:"0 28px",height:60,display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`2px solid ${C.azul}`,position:"sticky",top:0,zIndex:100},
+  logo:{color:C.azulC,fontSize:19,fontWeight:"bold",fontFamily:F_TITULO},
+  contenedor:{maxWidth:980,margin:"0 auto",padding:"28px 16px"},
+  card:{background:C.tarjeta,padding:"36px 32px",borderRadius:16,width:"100%",maxWidth:520,display:"flex",flexDirection:"column",gap:16,boxShadow:"0 12px 40px rgba(0,0,0,0.6)",border:`1px solid ${C.borde}`},
+  titulo:{color:C.azulC,fontSize:24,fontWeight:"bold",margin:0,textAlign:"center",fontFamily:F_TITULO},
+  sub:{color:C.textoS,textAlign:"center",margin:"0 0 8px",fontSize:14},
+  label:{color:C.textoS,fontSize:13,marginBottom:5,fontWeight:"500"},
+  input:{padding:"11px 14px",borderRadius:8,border:`1px solid ${C.borde}`,background:"#0a1128",color:C.texto,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:F_CUERPO,outline:"none"},
+  textarea:{padding:"11px 14px",borderRadius:8,border:`1px solid ${C.borde}`,background:"#0a1128",color:C.texto,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:F_CUERPO,outline:"none",resize:"vertical",minHeight:90},
+  select:{padding:"11px 14px",borderRadius:8,border:`1px solid ${C.borde}`,background:"#0a1128",color:C.texto,fontSize:14,flex:1,fontFamily:F_CUERPO,outline:"none"},
+  btnAzul:{padding:"12px 20px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.azul},#1d4ed8)`,color:"#fff",fontWeight:"700",fontSize:14,cursor:"pointer",width:"100%",fontFamily:F_TITULO},
+  btnGris:{padding:"11px 20px",borderRadius:9,border:`1px solid ${C.borde}`,background:"transparent",color:C.textoS,fontSize:14,cursor:"pointer",width:"100%",fontFamily:F_CUERPO},
+  btnVerde:{padding:"12px 20px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.verde},#047857)`,color:"#fff",fontWeight:"700",fontSize:14,cursor:"pointer",width:"100%",fontFamily:F_TITULO},
+  btnNaranja:{padding:"12px 20px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.naranja},#b45309)`,color:"#fff",fontWeight:"700",fontSize:14,cursor:"pointer",fontFamily:F_TITULO},
+  btnMorado:{padding:"12px 20px",borderRadius:9,border:"none",background:`linear-gradient(135deg,${C.morado},#5b21b6)`,color:"#fff",fontWeight:"700",fontSize:14,cursor:"pointer",width:"100%",fontFamily:F_TITULO},
+  btnSm:{padding:"6px 13px",borderRadius:7,border:`1px solid ${C.borde}`,background:"transparent",color:C.textoS,cursor:"pointer",fontSize:12},
+  fila:{display:"flex",gap:12},
+  bloque:{background:C.tarjeta,padding:24,borderRadius:14,marginBottom:16,border:`1px solid ${C.borde}`},
+  tBloque:{color:C.azulC,fontSize:19,marginBottom:8,marginTop:0,fontFamily:F_TITULO,fontWeight:"bold"},
+  desc:{color:C.textoS,fontSize:13,marginBottom:16,lineHeight:1.6},
+  grid:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10},
+  opcion:(sel)=>({padding:12,borderRadius:10,border:sel?`2px solid ${C.azulC}`:`1px solid ${C.borde}`,background:sel?"#0f2a47":"#0a1128",cursor:"pointer",transition:"all 0.2s"}),
+  oLbl:{color:C.texto,fontWeight:"700",fontSize:13,margin:0},
+  oDesc:{color:C.textoS,fontSize:11,margin:"3px 0 0"},
+  pasos:{display:"flex",gap:5,marginBottom:24,justifyContent:"center",flexWrap:"wrap"},
+  pasoBola:(a,c2)=>({width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:"bold",background:c2?C.verde:a?C.azul:"#111827",color:(c2||a)?"white":"#4a5a70",border:a?`2px solid ${C.azulC}`:c2?`2px solid ${C.verde}`:`1px solid ${C.borde}`}),
+  resultado:{background:C.tarjeta,padding:24,borderRadius:14,border:`1px solid ${C.borde}`},
+  pre:{whiteSpace:"pre-wrap",color:"#CBD5E1",fontSize:13,lineHeight:2,margin:0,fontFamily:"'Courier New', monospace"},
+  sep:{borderTop:`1px solid ${C.borde}`,margin:"16px 0"},
+  chip:{display:"inline-block",background:"#0f2a47",border:`1px solid ${C.azul}`,color:C.azulC,padding:"3px 10px",borderRadius:20,fontSize:11,margin:2},
+  err:{color:C.err,textAlign:"center",margin:0,fontSize:13},
+  ok_msg:{color:C.ok,textAlign:"center",margin:0,fontSize:13},
+  badge:(col)=>({background:col,color:"#fff",fontSize:10,fontWeight:"bold",padding:"2px 7px",borderRadius:20,marginLeft:5}),
 };
 
-// ── Estilos ───────────────────────────────────────────
-const S = {
-  pantalla:  { minHeight:"100vh", background:C.fondo, display:"flex", justifyContent:"center", alignItems:"center", fontFamily:FC },
-  fondo:     { minHeight:"100vh", background:C.fondo, fontFamily:FC, color:C.texto },
-  header:    { background:C.panel, padding:"0 28px", height:60, display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:`2px solid ${C.azul}`, position:"sticky", top:0, zIndex:100 },
-  logo:      { color:C.azulC, fontSize:19, fontWeight:"bold", fontFamily:FT },
-  contenedor:{ maxWidth:980, margin:"0 auto", padding:"28px 16px" },
-  card:      { background:C.tarjeta, padding:"36px 32px", borderRadius:16, width:"100%", maxWidth:520, display:"flex", flexDirection:"column", gap:16, boxShadow:"0 12px 40px rgba(0,0,0,0.6)", border:`1px solid ${C.borde}` },
-  titulo:    { color:C.azulC, fontSize:24, fontWeight:"bold", margin:0, textAlign:"center", fontFamily:FT },
-  sub:       { color:C.textoS, textAlign:"center", margin:"0 0 8px", fontSize:14 },
-  label:     { color:C.textoS, fontSize:13, marginBottom:5, fontWeight:"500" },
-  input:     { padding:"11px 14px", borderRadius:8, border:`1px solid ${C.borde}`, background:"#0a1128", color:C.texto, fontSize:14, width:"100%", boxSizing:"border-box", fontFamily:FC, outline:"none" },
-  textarea:  { padding:"11px 14px", borderRadius:8, border:`1px solid ${C.borde}`, background:"#0a1128", color:C.texto, fontSize:14, width:"100%", boxSizing:"border-box", fontFamily:FC, outline:"none", resize:"vertical", minHeight:90 },
-  select:    { padding:"11px 14px", borderRadius:8, border:`1px solid ${C.borde}`, background:"#0a1128", color:C.texto, fontSize:14, flex:1, fontFamily:FC, outline:"none" },
-  btnAzul:   { padding:"12px 20px", borderRadius:9, border:"none", background:`linear-gradient(135deg,${C.azul},#1d4ed8)`, color:"#fff", fontWeight:"700", fontSize:14, cursor:"pointer", width:"100%", fontFamily:FT },
-  btnGris:   { padding:"11px 20px", borderRadius:9, border:`1px solid ${C.borde}`, background:"transparent", color:C.textoS, fontSize:14, cursor:"pointer", width:"100%", fontFamily:FC },
-  btnVerde:  { padding:"12px 20px", borderRadius:9, border:"none", background:`linear-gradient(135deg,${C.verde},#047857)`, color:"#fff", fontWeight:"700", fontSize:14, cursor:"pointer", width:"100%", fontFamily:FT },
-  btnNaranja:{ padding:"12px 20px", borderRadius:9, border:"none", background:`linear-gradient(135deg,${C.naranja},#b45309)`, color:"#fff", fontWeight:"700", fontSize:14, cursor:"pointer", fontFamily:FT },
-  btnMorado: { padding:"12px 20px", borderRadius:9, border:"none", background:`linear-gradient(135deg,${C.morado},#5b21b6)`, color:"#fff", fontWeight:"700", fontSize:14, cursor:"pointer", width:"100%", fontFamily:FT },
-  btnSm:     { padding:"6px 13px", borderRadius:7, border:`1px solid ${C.borde}`, background:"transparent", color:C.textoS, cursor:"pointer", fontSize:12 },
-  fila:      { display:"flex", gap:12 },
-  bloque:    { background:C.tarjeta, padding:24, borderRadius:14, marginBottom:16, border:`1px solid ${C.borde}` },
-  tBloque:   { color:C.azulC, fontSize:19, marginBottom:8, marginTop:0, fontFamily:FT, fontWeight:"bold" },
-  grid2:     { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
-  opcion:    sel => ({ padding:12, borderRadius:10, border:sel?`2px solid ${C.azulC}`:`1px solid ${C.borde}`, background:sel?"#0f2a47":"#0a1128", cursor:"pointer", transition:"all 0.2s" }),
-  oLbl:      { color:C.texto, fontWeight:"700", fontSize:13, margin:0 },
-  oDesc:     { color:C.textoS, fontSize:11, margin:"3px 0 0" },
-  pasos:     { display:"flex", gap:5, marginBottom:24, justifyContent:"center", flexWrap:"wrap" },
-  pasoBola:  (a,c2) => ({ width:30, height:30, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:"bold", background:c2?C.verde:a?C.azul:"#111827", color:(c2||a)?"white":"#4a5a70", border:a?`2px solid ${C.azulC}`:c2?`2px solid ${C.verde}`:`1px solid ${C.borde}` }),
-  resultado: { background:C.tarjeta, padding:24, borderRadius:14, border:`1px solid ${C.borde}` },
-  pre:       { whiteSpace:"pre-wrap", color:"#CBD5E1", fontSize:13, lineHeight:2, margin:0, fontFamily:"'Courier New', monospace" },
-  sep:       { borderTop:`1px solid ${C.borde}`, margin:"16px 0" },
-  chip:      { display:"inline-block", background:"#0f2a47", border:`1px solid ${C.azul}`, color:C.azulC, padding:"3px 10px", borderRadius:20, fontSize:11, margin:2 },
-  err:       { color:C.err, textAlign:"center", margin:0, fontSize:13 },
-  okMsg:     { color:C.ok, textAlign:"center", margin:0, fontSize:13 },
-  badge:     col => ({ background:col, color:"#fff", fontSize:10, fontWeight:"bold", padding:"2px 7px", borderRadius:20, marginLeft:5 }),
-  // Modal overlay
-  overlay:   { position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 },
-  modal:     { background:C.tarjeta, borderRadius:16, border:`1px solid ${C.borde}`, width:"100%", maxWidth:640, maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" },
-  modalHead: { padding:"20px 24px 16px", borderBottom:`1px solid ${C.borde}`, display:"flex", justifyContent:"space-between", alignItems:"center" },
-  modalBody: { padding:"20px 24px", overflowY:"auto", flex:1 },
-  modalFoot: { padding:"16px 24px", borderTop:`1px solid ${C.borde}`, display:"flex", gap:10 },
-};
-
-// ── Helpers UI ────────────────────────────────────────
-function Opciones({ lista, val, set }) {
-  return (
-    <div style={S.grid2}>
-      {lista.map(op => (
-        <div key={op.id} style={S.opcion(val===op.id)} onClick={()=>set(op.id)}>
-          <p style={S.oLbl}>{op.label}</p>
-          <p style={S.oDesc}>{op.desc}</p>
-        </div>
-      ))}
-    </div>
-  );
+function Opciones({lista,val,set}){
+  return(<div style={S.grid}>{lista.map(op=>(<div key={op.id} style={S.opcion(val===op.id)} onClick={()=>set(op.id)}><p style={S.oLbl}>{op.label}</p><p style={S.oDesc}>{op.desc}</p></div>))}</div>);
 }
-
-function SubirImagen({ label, preview, inputRef, onChange }) {
-  return (
+function SubirImagen({label,preview,inputRef,onChange}){
+  return(
     <div style={{textAlign:"center"}}>
       <p style={{...S.label,textAlign:"center"}}>{label}</p>
-      <div style={{width:80,height:80,borderRadius:10,border:`2px dashed ${C.borde}`,background:"#0a1128",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",cursor:"pointer",margin:"0 auto"}}
-        onClick={()=>inputRef.current.click()}>
-        {preview ? <img src={preview} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/> : <span style={{fontSize:26,color:C.textoS}}>📷</span>}
+      <div style={{width:80,height:80,borderRadius:10,border:`2px dashed ${C.borde}`,background:"#0a1128",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",cursor:"pointer",margin:"0 auto"}} onClick={()=>inputRef.current.click()}>
+        {preview?<img src={preview} alt={label} style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<span style={{fontSize:26,color:C.textoS}}>📷</span>}
       </div>
       <p style={{color:C.textoS,fontSize:10,margin:"4px 0 0"}}>Click para subir</p>
       <input ref={inputRef} type="file" accept="image/*" style={{display:"none"}} onChange={onChange}/>
     </div>
   );
 }
-
-function DashCard({ icon, titulo, desc, color, onClick, badge, disabled }) {
-  const [hover,setHover] = useState(false);
-  return (
+function DashCard({icon,titulo,desc,color,onClick,badge,disabled}){
+  const [hover,setHover]=useState(false);
+  return(
     <div onClick={disabled?null:onClick} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
       style={{background:hover&&!disabled?"#131f35":"#0f1a2e",border:`1.5px solid ${hover&&!disabled?color:C.borde}`,borderRadius:14,padding:"20px 16px",cursor:disabled?"not-allowed":"pointer",transition:"all 0.2s",position:"relative",opacity:disabled?0.5:1,boxShadow:hover&&!disabled?`0 4px 20px ${color}33`:"none"}}>
       {badge&&<span style={{position:"absolute",top:10,right:10,background:color,color:"#fff",fontSize:10,fontWeight:"bold",padding:"2px 7px",borderRadius:20}}>{badge}</span>}
       <div style={{fontSize:32,marginBottom:8}}>{icon}</div>
-      <p style={{color:C.texto,fontWeight:"bold",fontSize:14,margin:"0 0 4px",fontFamily:FT}}>{titulo}</p>
+      <p style={{color:C.texto,fontWeight:"bold",fontSize:14,margin:"0 0 4px",fontFamily:F_TITULO}}>{titulo}</p>
       <p style={{color:C.textoS,fontSize:12,margin:"0 0 10px",lineHeight:1.4}}>{desc}</p>
       <div style={{display:"inline-block",background:disabled?C.borde:color,color:disabled?C.textoS:"#fff",padding:"4px 10px",borderRadius:7,fontSize:11,fontWeight:"bold"}}>{disabled?"Próximamente":"Abrir →"}</div>
     </div>
   );
 }
-
-function TarjetaClase({ clase, onVer, onEliminar }) {
-  const fecha = new Date(clase.creadaEn).toLocaleDateString("es-CO",{day:"2-digit",month:"short",year:"numeric"});
-  return (
+function TarjetaClase({clase,onVer,onEliminar}){
+  const fecha=new Date(clase.creadaEn).toLocaleDateString("es-CO",{day:"2-digit",month:"short",year:"numeric"});
+  return(
     <div style={{background:"#0a1128",border:`1px solid ${C.borde}`,borderRadius:10,padding:"12px 16px",marginBottom:8}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div style={{flex:1}}>
@@ -138,33 +193,43 @@ function TarjetaClase({ clase, onVer, onEliminar }) {
   );
 }
 
+// ── Componente para resolver actividades interactivas ─
 function ResolverActividad({ actividad, tipo, onRespuestas }) {
-  const [respuestas,setRespuestas] = useState({});
+  const [respuestas, setRespuestas] = useState({});
   const preguntas = actividad?.preguntas || actividad?.pares || [];
-  const setResp = (i,val) => { const n={...respuestas,[i]:val}; setRespuestas(n); onRespuestas(n); };
-  if (tipo==="relacionar" && actividad?.pares) {
+
+  const setResp = (i, val) => {
+    const nuevo = {...respuestas, [i]: val};
+    setRespuestas(nuevo);
+    onRespuestas(nuevo);
+  };
+
+  if (tipo === "relacionar" && actividad?.pares) {
+    const pares = actividad.pares;
+    const columnaBOptions = pares.map(p=>p.columnaB);
     return (
       <div>
         <p style={{color:C.textoS,fontSize:13,marginBottom:12}}>Une cada concepto con su definición:</p>
-        {actividad.pares.map((par,i)=>(
+        {pares.map((par,i)=>(
           <div key={i} style={{display:"flex",gap:10,marginBottom:10,alignItems:"center"}}>
             <div style={{flex:1,background:"#0a1128",padding:"8px 12px",borderRadius:8,border:`1px solid ${C.borde}`,color:C.texto,fontSize:13}}>{par.columnaA}</div>
             <span style={{color:C.textoS}}>→</span>
             <select style={{...S.select,flex:1}} value={respuestas[i]||""} onChange={e=>setResp(i,e.target.value)}>
               <option value="">Seleccionar...</option>
-              {actividad.pares.map((op,j)=><option key={j} value={op.columnaB}>{op.columnaB}</option>)}
+              {columnaBOptions.map((op,j)=><option key={j} value={op}>{op}</option>)}
             </select>
           </div>
         ))}
       </div>
     );
   }
+
   return (
     <div>
       {preguntas.map((p,i)=>(
         <div key={i} style={{marginBottom:16,background:"#0a1128",padding:14,borderRadius:10,border:`1px solid ${C.borde}`}}>
           <p style={{color:C.azulC,fontWeight:"bold",fontSize:13,margin:"0 0 8px"}}>{i+1}. {p.pregunta||p.enunciado||p.afirmacion}</p>
-          {(tipo==="quiz"||p.tipo==="seleccion")&&p.opciones&&(
+          {(tipo==="quiz"||p.tipo==="seleccion") && p.opciones && (
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {p.opciones.map((op,j)=>(
                 <div key={j} style={{...S.opcion(respuestas[i]===op),padding:"8px 12px"}} onClick={()=>setResp(i,op)}>
@@ -173,15 +238,17 @@ function ResolverActividad({ actividad, tipo, onRespuestas }) {
               ))}
             </div>
           )}
-          {tipo==="completar"&&<input style={S.input} placeholder="Escribe la respuesta..." value={respuestas[i]||""} onChange={e=>setResp(i,e.target.value)}/>}
-          {tipo==="verdadero_falso"&&(
+          {tipo==="completar" && (
+            <input style={S.input} placeholder="Escribe la respuesta..." value={respuestas[i]||""} onChange={e=>setResp(i,e.target.value)}/>
+          )}
+          {tipo==="verdadero_falso" && (
             <div style={S.fila}>
-              <div style={{...S.opcion(respuestas[i]==="Verdadero"),flex:1,padding:"8px 12px"}} onClick={()=>setResp(i,"Verdadero")}><p style={{...S.oLbl,textAlign:"center"}}>✅ Verdadero</p></div>
-              <div style={{...S.opcion(respuestas[i]==="Falso"),flex:1,padding:"8px 12px"}} onClick={()=>setResp(i,"Falso")}><p style={{...S.oLbl,textAlign:"center"}}>❌ Falso</p></div>
+              <div style={{...S.opcion(respuestas[i]==="Verdadero"),flex:1,padding:"8px 12px"}} onClick={()=>setResp(i,"Verdadero")}><p style={{...S.oLbl,fontSize:13,textAlign:"center"}}>✅ Verdadero</p></div>
+              <div style={{...S.opcion(respuestas[i]==="Falso"),flex:1,padding:"8px 12px"}} onClick={()=>setResp(i,"Falso")}><p style={{...S.oLbl,fontSize:13,textAlign:"center"}}>❌ Falso</p></div>
             </div>
           )}
-          {(tipo==="taller"||tipo==="evaluacion"||p.tipo==="abierta")&&(
-            <textarea style={{...S.textarea,minHeight:70}} placeholder="Escribe tu respuesta..." value={respuestas[i]||""} onChange={e=>setResp(i,e.target.value)}/>
+          {(tipo==="taller"||tipo==="evaluacion"||p.tipo==="abierta") && (
+            <textarea style={{...S.textarea,minHeight:70}} placeholder="Escribe tu respuesta aquí..." value={respuestas[i]||""} onChange={e=>setResp(i,e.target.value)}/>
           )}
         </div>
       ))}
@@ -189,322 +256,22 @@ function ResolverActividad({ actividad, tipo, onRespuestas }) {
   );
 }
 
-// ============================================================
-//  MODAL ASIGNAR TAREA
-// ============================================================
-function ModalAsignarTarea({ docenteId, onCerrar, onCreada }) {
-  const [paso,          setPaso]          = useState(1); // 1=config, 2=asignacion
-  const [ntTitulo,      setNtTitulo]      = useState("");
-  const [ntDesc,        setNtDesc]        = useState("");
-  const [ntTipo,        setNtTipo]        = useState("taller");
-  const [ntArea,        setNtArea]        = useState("");
-  const [ntGrado,       setNtGrado]       = useState("");
-  const [ntFecha,       setNtFecha]       = useState("");
-  const [ntActividad,   setNtActividad]   = useState(null);
-  const [generandoAct,  setGenerandoAct]  = useState(false);
-
-  // Asignación
-  const [modoAsig,      setModoAsig]      = useState("grado"); // "grado" | "individual"
-  const [gradoSelModal, setGradoSelModal] = useState("");
-  const [estudiantesGrado, setEstudiantesGrado] = useState([]);
-  const [cargandoEsts,  setCargandoEsts]  = useState(false);
-  const [estSelIds,     setEstSelIds]     = useState([]);
-  const [busqueda,      setBusqueda]      = useState("");
-  const [creando,       setCreando]       = useState(false);
-
-  const cargarGradoEsts = async g => {
-    if (!g) { setEstudiantesGrado([]); return; }
-    setCargandoEsts(true);
-    try {
-      const r = await fetch(`${API}/estudiantes-grado/${encodeURIComponent(g)}`);
-      const d = await r.json();
-      setEstudiantesGrado(d.estudiantes||[]);
-    } catch(_) {}
-    setCargandoEsts(false);
-  };
-
-  const toggleEst = id => setEstSelIds(prev =>
-    prev.includes(id) ? prev.filter(x=>x!==id) : [...prev,id]
-  );
-
-  const seleccionarTodos = () => setEstSelIds(estudiantesGrado.map(e=>e.id));
-  const limpiarSel       = () => setEstSelIds([]);
-
-  const estudiantesFiltrados = estudiantesGrado.filter(e =>
-    e.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (e.usuario||"").toLowerCase().includes(busqueda.toLowerCase())
-  );
-
-  const generarActividad = async () => {
-    if (!ntTipo||!ntArea||!ntGrado) { alert("Selecciona tipo, área y grado primero"); return; }
-    setGenerandoAct(true);
-    try {
-      const r = await fetch(`${API}/generar-actividad`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ tipo:ntTipo, tema:ntTitulo||"Tema", area:ntArea, grado:ntGrado, cantidad:5 })
-      });
-      const d = await r.json();
-      if (d.ok) setNtActividad(d.actividad);
-    } catch(_) {}
-    setGenerandoAct(false);
-  };
-
-  const crearTarea = async () => {
-    if (!ntTitulo) { alert("Completa el título"); return; }
-    if (modoAsig==="grado" && !gradoSelModal) { alert("Selecciona el grado"); return; }
-    if (modoAsig==="individual" && estSelIds.length===0) { alert("Selecciona al menos un estudiante"); return; }
-    setCreando(true);
-    try {
-      const body = {
-        docenteId, titulo:ntTitulo, descripcion:ntDesc, tipo:ntTipo,
-        actividad:ntActividad, area:ntArea,
-        grado: modoAsig==="grado" ? gradoSelModal : ntGrado,
-        fechaEntrega:ntFecha,
-        asignarGrado:  modoAsig==="grado" ? gradoSelModal : "manual",
-        estudiantesRegIds: modoAsig==="individual" ? estSelIds : [],
-      };
-      const r = await fetch(`${API}/crear-tarea`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify(body)
-      });
-      const d = await r.json();
-      if (r.ok) { onCreada(d.tarea); }
-      else { alert(d.mensaje||"Error"); }
-    } catch(_) { alert("Error de conexión"); }
-    setCreando(false);
-  };
-
-  return (
-    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onCerrar()}>
-      <div style={S.modal}>
-        {/* Cabecera */}
-        <div style={S.modalHead}>
-          <div>
-            <h2 style={{color:C.azulC,margin:0,fontFamily:FT,fontSize:18}}>📋 Asignar tarea</h2>
-            <p style={{color:C.textoS,margin:"4px 0 0",fontSize:12}}>Paso {paso} de 2</p>
-          </div>
-          <button style={{...S.btnSm,fontSize:18,padding:"4px 10px"}} onClick={onCerrar}>✕</button>
-        </div>
-
-        <div style={S.modalBody}>
-          {/* ─── PASO 1: Configuración ─────────────────────── */}
-          {paso===1 && (
-            <>
-              <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:FT}}>Tipo de actividad</p>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:18}}>
-                {TIPOS_ACTIVIDAD.map(t=>(
-                  <div key={t.id} style={S.opcion(ntTipo===t.id)} onClick={()=>setNtTipo(t.id)}>
-                    <p style={{...S.oLbl,fontSize:12}}>{t.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{marginBottom:12}}>
-                <p style={S.label}>Título *</p>
-                <input style={S.input} placeholder="Ej: Quiz sobre ecosistemas" value={ntTitulo} onChange={e=>setNtTitulo(e.target.value)}/>
-              </div>
-              <div style={{marginBottom:12}}>
-                <p style={S.label}>Instrucciones</p>
-                <textarea style={{...S.textarea,minHeight:70}} placeholder="Instrucciones para el estudiante..." value={ntDesc} onChange={e=>setNtDesc(e.target.value)}/>
-              </div>
-              <div style={{...S.fila,marginBottom:14}}>
-                <div style={{flex:1}}>
-                  <p style={S.label}>Área</p>
-                  <select style={S.select} value={ntArea} onChange={e=>setNtArea(e.target.value)}>
-                    <option value="">Seleccionar</option>
-                    {["Ciencias Naturales","Ciencias Sociales","Matemáticas","Lengua Castellana","Inglés","Educación Física","Artística","Ética","Tecnología","Filosofía","Química","Física","Biología"].map(m=><option key={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div style={{flex:1}}>
-                  <p style={S.label}>Grado referencia</p>
-                  <select style={S.select} value={ntGrado} onChange={e=>setNtGrado(e.target.value)}>
-                    <option value="">Seleccionar</option>
-                    {["Transición","1°","2°","3°","4°","5°","6°","7°","8°","9°","10°","11°"].map(g=><option key={g}>{g}</option>)}
-                  </select>
-                </div>
-                <div style={{flex:1}}>
-                  <p style={S.label}>Fecha entrega</p>
-                  <input type="date" style={S.input} value={ntFecha} onChange={e=>setNtFecha(e.target.value)}/>
-                </div>
-              </div>
-
-              {/* Generar actividad IA */}
-              <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:14,marginBottom:4}}>
-                <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 8px",fontSize:13}}>🤖 Generar actividad con IA (opcional)</p>
-                <button style={{...S.btnAzul,opacity:generandoAct?0.7:1}} disabled={generandoAct} onClick={generarActividad}>
-                  {generandoAct?"⏳ Generando...":"✨ Generar preguntas automáticamente"}
-                </button>
-                {ntActividad&&(
-                  <div style={{marginTop:10,background:"#0a1128",borderRadius:8,padding:10}}>
-                    <p style={{color:C.ok,fontWeight:"bold",margin:"0 0 6px",fontSize:12}}>✅ {(ntActividad.preguntas||ntActividad.pares||[]).length} preguntas generadas</p>
-                    {(ntActividad.preguntas||ntActividad.pares||[]).slice(0,2).map((p,i)=>(
-                      <p key={i} style={{color:C.textoS,fontSize:11,margin:"0 0 3px"}}>{i+1}. {p.pregunta||p.enunciado||p.afirmacion||p.columnaA}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* ─── PASO 2: Asignación ────────────────────────── */}
-          {paso===2 && (
-            <>
-              <p style={{color:C.texto,fontWeight:"bold",marginBottom:12,fontFamily:FT}}>¿Cómo asignar?</p>
-              <div style={{...S.fila,marginBottom:18}}>
-                <div style={{...S.opcion(modoAsig==="grado"),flex:1}}
-                  onClick={()=>{ setModoAsig("grado"); setEstSelIds([]); setEstudiantesGrado([]); setGradoSelModal(""); }}>
-                  <p style={S.oLbl}>🎓 Grado completo</p>
-                  <p style={S.oDesc}>Todos los del grado</p>
-                </div>
-                <div style={{...S.opcion(modoAsig==="individual"),flex:1}}
-                  onClick={()=>{ setModoAsig("individual"); setGradoSelModal(""); }}>
-                  <p style={S.oLbl}>👤 Selección individual</p>
-                  <p style={S.oDesc}>Elige estudiante por estudiante</p>
-                </div>
-              </div>
-
-              {/* ── GRADO COMPLETO ── */}
-              {modoAsig==="grado" && (
-                <>
-                  <p style={S.label}>Selecciona el grado</p>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
-                    {GRADOS_SISTEMA.map(g=>(
-                      <div key={g} style={{...S.opcion(gradoSelModal===g),padding:"10px 8px",textAlign:"center"}}
-                        onClick={()=>{ setGradoSelModal(g); cargarGradoEsts(g); }}>
-                        <p style={{...S.oLbl,textAlign:"center"}}>Grado {g}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {gradoSelModal && (
-                    <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:8,padding:"10px 14px"}}>
-                      {cargandoEsts ? (
-                        <p style={{color:C.textoS,margin:0,fontSize:13}}>Cargando estudiantes...</p>
-                      ) : (
-                        <p style={{color:C.ok,margin:0,fontSize:13,fontWeight:"bold"}}>
-                          ✅ Se asignará a <strong>{estudiantesGrado.length}</strong> estudiantes del grado {gradoSelModal}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* ── SELECCIÓN INDIVIDUAL ── */}
-              {modoAsig==="individual" && (
-                <>
-                  {/* Botones rápidos por grado */}
-                  <p style={{color:C.textoS,fontSize:12,margin:"0 0 8px"}}>Cargar por grado:</p>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-                    {GRADOS_SISTEMA.map(g=>(
-                      <button key={g} style={{...S.btnSm,color:gradoSelModal===g?C.azulC:C.textoS,borderColor:gradoSelModal===g?C.azul:C.borde,fontSize:11}}
-                        onClick={()=>{ setGradoSelModal(g); setBusqueda(""); cargarGradoEsts(g); }}>
-                        Grado {g}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Buscador */}
-                  <input style={{...S.input,marginBottom:10}} placeholder="🔍 Buscar por nombre o usuario..."
-                    value={busqueda} onChange={e=>setBusqueda(e.target.value)}/>
-
-                  {/* Acciones rápidas */}
-                  {estudiantesFiltrados.length>0 && (
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                      <p style={{color:C.textoS,fontSize:12,margin:0}}>
-                        {estudiantesFiltrados.length} estudiantes · <span style={{color:C.ok}}>{estSelIds.length} seleccionados</span>
-                      </p>
-                      <div style={{display:"flex",gap:6}}>
-                        <button style={{...S.btnSm,fontSize:11,color:C.azulC,borderColor:C.azul}} onClick={seleccionarTodos}>Todos</button>
-                        <button style={{...S.btnSm,fontSize:11,color:C.err,borderColor:C.rojo}} onClick={limpiarSel}>Limpiar</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Lista con checkboxes */}
-                  {cargandoEsts ? (
-                    <p style={{color:C.textoS,textAlign:"center",padding:16}}>Cargando...</p>
-                  ) : estudiantesFiltrados.length===0 ? (
-                    <div style={{background:"#0a1128",borderRadius:8,padding:20,textAlign:"center",border:`1px solid ${C.borde}`}}>
-                      <p style={{color:C.textoS,fontSize:13,margin:0}}>
-                        {gradoSelModal ? "No hay estudiantes registrados en este grado." : "Selecciona un grado arriba para ver los estudiantes."}
-                      </p>
-                    </div>
-                  ) : (
-                    <div style={{maxHeight:260,overflowY:"auto",background:"#0a1128",borderRadius:8,border:`1px solid ${C.borde}`,padding:6}}>
-                      {estudiantesFiltrados.map(e=>(
-                        <div key={e.id}
-                          style={{display:"flex",alignItems:"center",gap:10,padding:"9px 10px",borderRadius:8,marginBottom:3,
-                            background:estSelIds.includes(e.id)?"#0f2a47":"transparent",
-                            border:estSelIds.includes(e.id)?`1px solid ${C.azul}`:"1px solid transparent",
-                            cursor:"pointer",transition:"all 0.15s"}}
-                          onClick={()=>toggleEst(e.id)}>
-                          {/* Checkbox visual */}
-                          <div style={{width:20,height:20,borderRadius:5,flexShrink:0,
-                            border:estSelIds.includes(e.id)?`2px solid ${C.azulC}`:`2px solid ${C.borde}`,
-                            background:estSelIds.includes(e.id)?C.azul:"transparent",
-                            display:"flex",alignItems:"center",justifyContent:"center"}}>
-                            {estSelIds.includes(e.id)&&<span style={{color:"white",fontSize:12,fontWeight:"bold"}}>✓</span>}
-                          </div>
-                          <div style={{flex:1}}>
-                            <p style={{color:estSelIds.includes(e.id)?C.azulC:C.texto,margin:0,fontSize:13,fontWeight:estSelIds.includes(e.id)?"bold":"normal"}}>{e.nombre}</p>
-                            <p style={{color:C.textoS,fontSize:11,margin:0}}>Grado {e.grado||"—"} · @{e.usuario}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {estSelIds.length>0&&(
-                    <div style={{marginTop:8,background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:8,padding:"8px 12px"}}>
-                      <p style={{color:C.ok,fontSize:12,margin:0}}>✅ {estSelIds.length} estudiante{estSelIds.length!==1?"s":""} seleccionado{estSelIds.length!==1?"s":""}</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Pie del modal */}
-        <div style={S.modalFoot}>
-          {paso===1 ? (
-            <>
-              <button style={S.btnGris} onClick={onCerrar}>Cancelar</button>
-              <button style={{...S.btnVerde,flex:1}}
-                onClick={()=>{ if(!ntTitulo){alert("Completa el título");return;} setPaso(2); }}>
-                Siguiente: Asignar estudiantes →
-              </button>
-            </>
-          ) : (
-            <>
-              <button style={{...S.btnGris,width:"auto",padding:"11px 20px"}} onClick={()=>setPaso(1)}>← Volver</button>
-              <button style={{...S.btnVerde,flex:1,opacity:creando?0.7:1}} disabled={creando} onClick={crearTarea}>
-                {creando?"⏳ Creando tarea...":"✅ Crear y asignar tarea"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
+// ======================================================
 //  APP PRINCIPAL
-// ============================================================
+// ======================================================
 export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const codigoUrl = urlParams.get("codigo");
 
   // ── Auth ──────────────────────────────────────────────
-  const [vista,    setVista]   = useState(codigoUrl?"portal_est":"login");
+  const [vista,    setVista]   = useState(codigoUrl?"portal_estudiante":"login");
   const [usuario,  setUsuario] = useState(null);
   const [nombre,   setNombre]  = useState("");
   const [email,    setEmail]   = useState("");
   const [password, setPassword]= useState("");
   const [msgAuth,  setMsgAuth] = useState("");
-  const [regInst,  setRegInst] = useState("");
-  const [regCargo, setRegCargo]= useState("Docente");
+  const [regInst,setRegInst]=useState("");
+  const [regCargo,setRegCargo]=useState("Docente");
   const [regCiudad,setRegCiudad]=useState("");
 
   // ── Perfil ────────────────────────────────────────────
@@ -515,91 +282,98 @@ export default function App() {
   const logoRef=useRef(), banderaRef=useRef();
 
   // ── Datos docente ─────────────────────────────────────
-  const [misClases,   setMisClases]   = useState([]);
-  const [misTareas,   setMisTareas]   = useState([]);
-  const [claseActiva, setClaseActiva] = useState(null);
-  const [tareaActiva, setTareaActiva] = useState(null);
-
-  // ── Panel entregas ─────────────────────────────────────
-  const [listadoEntregas, setListadoEntregas] = useState([]);
-  const [resumenEntregas, setResumenEntregas] = useState({});
-  const [calEntregaId,    setCalEntregaId]    = useState(null);
-  const [calNota,         setCalNota]         = useState("");
-  const [calComentario,   setCalComentario]   = useState("");
-  const [filtroEstado,    setFiltroEstado]    = useState("todos");
-
-  // ── Modal asignar ──────────────────────────────────────
-  const [mostrarModal, setMostrarModal] = useState(false);
+  const [misClases,setMisClases]=useState([]);
+  const [misTareas,setMisTareas]=useState([]);
+  const [claseActiva,setClaseActiva]=useState(null);
+  const [tareaActiva,setTareaActiva]=useState(null);
+  const [entregas,setEntregas]=useState([]);
+  const [sinEntregar,setSinEntregar]=useState([]);
+  const [calNota,setCalNota]=useState("");
+  const [calComentario,setCalComentario]=useState("");
+  const [calEntregaId,setCalEntregaId]=useState(null);
 
   // ── Wizard clase ──────────────────────────────────────
-  const [paso,       setPaso]     = useState(1);
+  const [paso,setPaso]=useState(1);
   const [institucion,setInstitucion]=useState("");
-  const [docente,    setDocente]  = useState("");
-  const [area,       setArea]     = useState("");
-  const [grado,      setGrado]    = useState("");
-  const [periodo,    setPeriodo]  = useState("1");
-  const [fecha,      setFecha]    = useState("");
-  const [tema,       setTema]     = useState("");
-  const [duracion,   setDuracion] = useState("55");
-  const [nivelEdu,   setNivelEdu] = useState("");
-  const [apertura,   setApertura] = useState("");
-  const [desarrollo, setDesarrollo]=useState("");
-  const [retro,      setRetro]    = useState("");
-  const [cierre,     setCierre]   = useState("");
-  const [dejaTarea,  setDejaTarea]= useState(null);
-  const [tarea,      setTarea]    = useState("");
+  const [docente,setDocente]=useState("");
+  const [area,setArea]=useState("");
+  const [grado,setGrado]=useState("");
+  const [periodo,setPeriodo]=useState("1");
+  const [fecha,setFecha]=useState("");
+  const [tema,setTema]=useState("");
+  const [duracion,setDuracion]=useState("55");
+  const [nivelEdu,setNivelEdu]=useState("");
+  const [apertura,setApertura]=useState("");
+  const [desarrollo,setDesarrollo]=useState("");
+  const [retro,setRetro]=useState("");
+  const [cierre,setCierre]=useState("");
+  const [dejaTarea,setDejaTarea]=useState(null);
+  const [tarea,setTarea]=useState("");
 
   // ── Resultado clase ───────────────────────────────────
-  const [contenido,  setContenido] = useState("");
-  const [cargando,   setCargando]  = useState(false);
+  const [contenido,setContenido]=useState("");
+  const [cargando,setCargando]=useState(false);
   const [descargando,setDescargando]=useState(false);
-  const [descPdf,    setDescPdf]   = useState(false);
-  const [guardando,  setGuardando] = useState(false);
-  const [guardadoOk, setGuardadoOk]= useState(false);
+  const [descPdf,setDescPdf]=useState(false);
+  const [guardando,setGuardando]=useState(false);
+  const [guardadoOk,setGuardadoOk]=useState(false);
+
+  // ── Crear tarea ───────────────────────────────────────
+  const [ntTitulo,setNtTitulo]=useState("");
+  const [ntDesc,setNtDesc]=useState("");
+  const [ntFecha,setNtFecha]=useState("");
+  const [ntTipo,setNtTipo]=useState("taller");
+  const [ntArea,setNtArea]=useState("");
+  const [ntGrado,setNtGrado]=useState("");
+  const [ntEstudiantes,setNtEstudiantes]=useState("");
+  const [ntActividad,setNtActividad]=useState(null);
+  const [generandoAct,setGenerandoAct]=useState(false);
+  const [tareaCreada,setTareaCreada]=useState(null);
+  const [creandoTarea,setCreandoTarea]=useState(false);
 
   // ── Portal estudiante ─────────────────────────────────
-  const [estVista,   setEstVista]  = useState("login");
-  const [estSesion,  setEstSesion] = useState(null);
-  const [estMsg,     setEstMsg]    = useState("");
-  const [estNombre,  setEstNombre] = useState("");
-  const [estUsuario, setEstUsuario]= useState("");
+  const [estVista,setEstVista]=useState("login"); // login, registro, dashboard, resolver
+  const [estSesion,setEstSesion]=useState(null);
+  const [estMsg,setEstMsg]=useState("");
+  const [estNombre,setEstNombre]=useState("");
+  const [estUsuario,setEstUsuario]=useState("");
   const [estPassword,setEstPassword]=useState("");
-  const [estGrado,   setEstGrado]  = useState("");
+  const [estGrado,setEstGrado]=useState("");
   const [estInstitucion,setEstInstitucion]=useState("");
-  const [estCodigo,  setEstCodigo] = useState(codigoUrl||"");
-  const [estTareas,  setEstTareas] = useState([]);
-  const [estTareaAct,setEstTareaAct]=useState(null);
+  const [estCodigo,setEstCodigo]=useState(codigoUrl||"");
+  const [estTareasAsignadas,setEstTareasAsignadas]=useState([]);
+  const [estTareaActiva,setEstTareaActiva]=useState(null);
   const [estRespuestas,setEstRespuestas]=useState({});
-  const [estRespTexto, setEstRespTexto] =useState("");
-  const [estArchivo,   setEstArchivo]   =useState(null);
-  const [estEnviando,  setEstEnviando]  =useState(false);
-  const [estEntregada, setEstEntregada] =useState(false);
-  const [estCalificacion,setEstCalificacion]=useState(null);
+  const [estRespuestaTexto,setEstRespuestaTexto]=useState("");
+  const [estArchivo,setEstArchivo]=useState(null);
+  const [estEnviando,setEstEnviando]=useState(false);
+  const [estYaEntrego,setEstYaEntrego]=useState(false);
+  const [estEntregaData,setEstEntregaData]=useState(null);
   const archivoRef=useRef();
 
-  const esBach = nivelEdu==="bachillerato"||nivelEdu==="media_tecnica";
-  const optApertura   = esBach?OPT_B_APERTURA :OPT_P_APERTURA;
-  const optDesarrollo = esBach?OPT_B_DESARROLLO:OPT_P_DESARROLLO;
-  const optRetro      = esBach?OPT_B_RETRO     :OPT_P_RETRO;
+  const esBach=nivelEdu==="bachillerato"||nivelEdu==="media_tecnica";
+  const optApertura  = esBach?OPT_B_APERTURA :OPT_P_APERTURA;
+  const optDesarrollo= esBach?OPT_B_DESARROLLO:OPT_P_DESARROLLO;
+  const optRetro     = esBach?OPT_B_RETRO     :OPT_P_RETRO;
 
-  // ── Helpers ───────────────────────────────────────────
-  const cargarPerfil  = u => { setInstitucion(u.institucion||""); setDocente(u.nombre||""); if(u.logoPath)setLogoPreview(`${API}/${u.logoPath}`); if(u.banderaPath)setBanderaPreview(`${API}/${u.banderaPath}`); };
-  const cargarClases  = async uid => { try{const r=await fetch(`${API}/mis-clases/${uid}`);const d=await r.json();setMisClases(d.clases||[]);}catch(_){} };
-  const cargarTareas  = async uid => { try{const r=await fetch(`${API}/mis-tareas/${uid}`);const d=await r.json();setMisTareas(d.tareas||[]);}catch(_){} };
-  const cargarTareasEst=async uid => { try{const r=await fetch(`${API}/mis-tareas-estudiante/${uid}`);const d=await r.json();setEstTareas(d.tareas||[]);}catch(_){} };
-  const reset = () => { setPaso(1);setArea("");setGrado("");setPeriodo("1");setFecha("");setTema("");setDuracion("55");setNivelEdu("");setApertura("");setDesarrollo("");setRetro("");setCierre("");setDejaTarea(null);setTarea("");setContenido("");setGuardadoOk(false);setClaseActiva(null);if(usuario)cargarPerfil(usuario); };
+  const cargarPerfil=(u)=>{ setInstitucion(u.institucion||""); setDocente(u.nombre||""); if(u.logoPath)setLogoPreview(`${API}/${u.logoPath}`); if(u.banderaPath)setBanderaPreview(`${API}/${u.banderaPath}`); };
+  const cargarClases=async(uid)=>{ try{const r=await fetch(`${API}/mis-clases/${uid}`);const d=await r.json();setMisClases(d.clases||[]);}catch(_){} };
+  const cargarTareas=async(uid)=>{ try{const r=await fetch(`${API}/mis-tareas/${uid}`);const d=await r.json();setMisTareas(d.tareas||[]);}catch(_){} };
+  const cargarTareasEst=async(uid)=>{ try{const r=await fetch(`${API}/mis-tareas-estudiante/${uid}`);const d=await r.json();setEstTareasAsignadas(d.tareas||[]);}catch(_){} };
+
+  const reset=()=>{ setPaso(1);setArea("");setGrado("");setPeriodo("1");setFecha("");setTema("");setDuracion("55");setNivelEdu("");setApertura("");setDesarrollo("");setRetro("");setCierre("");setDejaTarea(null);setTarea("");setContenido("");setGuardadoOk(false);setClaseActiva(null);if(usuario)cargarPerfil(usuario); };
 
   // ── Auth Docente ──────────────────────────────────────
-  const login = async () => {
+  const login=async()=>{
     if(!email){setMsgAuth("Ingresa tu correo");return;}
     try{
       const r=await fetch(`${API}/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
       const d=await r.json();
       if(r.ok){setUsuario(d.usuario);cargarPerfil(d.usuario);setVista("dashboard");setMsgAuth("");cargarClases(d.usuario.id);cargarTareas(d.usuario.id);}
       else setMsgAuth(d.mensaje||"Error");
-    }catch{setMsgAuth("Sin conexión al servidor");}
+    }catch{setMsgAuth("No se pudo conectar al servidor");}
   };
-  const registrar = async () => {
+  const registrar=async()=>{
     if(!nombre||!email||!password){setMsgAuth("Completa nombre, correo y contraseña");return;}
     try{
       const r=await fetch(`${API}/registro`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre,email,password,institucion:regInst,cargo:regCargo,ciudad:regCiudad})});
@@ -607,123 +381,165 @@ export default function App() {
       if(r.ok)setTimeout(()=>{setVista("login");setMsgAuth("");},1600);
     }catch{setMsgAuth("Error en el registro");}
   };
-  const salir = () => {setVista("login");setUsuario(null);reset();setEmail("");setPassword("");setMsgAuth("");setMisClases([]);setMisTareas([]);setLogoPreview("");setBanderaPreview("");};
-  const subirPerfil = async () => {
+  const salir=()=>{setVista("login");setUsuario(null);reset();setEmail("");setPassword("");setMsgAuth("");setMisClases([]);setMisTareas([]);setLogoPreview("");setBanderaPreview("");};
+  const subirPerfil=async()=>{
     if(!usuario)return;
     const form=new FormData();
     form.append("userId",usuario.id);form.append("nombre",usuario.nombre);
     form.append("institucion",institucion);form.append("cargo",usuario.cargo||"Docente");form.append("ciudad",usuario.ciudad||"");
-    if(logoFile)form.append("logo",logoFile);if(banderaFile)form.append("bandera",banderaFile);
+    if(logoFile)form.append("logo",logoFile);
+    if(banderaFile)form.append("bandera",banderaFile);
     try{const r=await fetch(`${API}/actualizar-perfil`,{method:"POST",body:form});const d=await r.json();if(r.ok){setUsuario(d.usuario);setLogoFile(null);setBanderaFile(null);alert("Perfil guardado ✅");}else alert(d.mensaje);}
     catch{alert("Error guardando perfil");}
   };
 
   // ── Auth Estudiante ───────────────────────────────────
-  const loginEst = async () => {
+  const loginEstudianteReg=async()=>{
     if(!estUsuario||!estPassword){setEstMsg("Completa usuario y contraseña");return;}
     try{
       const r=await fetch(`${API}/login-estudiante-reg`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({usuario:estUsuario,password:estPassword})});
       const d=await r.json();
-      if(r.ok){setEstSesion(d.estudiante);setEstMsg("");setEstVista("dashboard");cargarTareasEst(d.estudiante.id);if(codigoUrl)unirseATarea(d.estudiante.id,codigoUrl);}
-      else setEstMsg(d.mensaje||"Error");
-    }catch{setEstMsg("Sin conexión");}
+      if(r.ok){setEstSesion(d.estudiante);setEstMsg("");setEstVista("dashboard");cargarTareasEst(d.estudiante.id);
+        if(codigoUrl){unirseATarea(d.estudiante.id,codigoUrl);}
+      }else setEstMsg(d.mensaje||"Error");
+    }catch{setEstMsg("No se pudo conectar al servidor");}
   };
-  const registrarEst = async () => {
-    if(!estNombre||!estUsuario||!estPassword){setEstMsg("Completa todos los campos");return;}
+  const registrarEstudiante=async()=>{
+    if(!estNombre||!estUsuario||!estPassword){setEstMsg("Completa nombre, usuario y contraseña");return;}
     try{
       const r=await fetch(`${API}/registro-estudiante`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre:estNombre,usuario:estUsuario,password:estPassword,grado:estGrado,institucion:estInstitucion})});
       const d=await r.json();
-      if(r.ok){setEstMsg("✅ Cuenta creada. Ahora inicia sesión.");setEstVista("login");}
+      if(r.ok){setEstMsg("✅ Registro exitoso. Ahora inicia sesión.");setEstVista("login");}
       else setEstMsg(d.mensaje||"Error");
     }catch{setEstMsg("Error en el registro");}
   };
-  const unirseATarea = async (estudianteId,cod) => {
+  const unirseATarea=async(estudianteId,cod)=>{
     if(!cod)return;
-    try{await fetch(`${API}/unirse-tarea`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({codigo:cod.toUpperCase(),estudianteId})});cargarTareasEst(estudianteId);}
-    catch(_){}
+    try{
+      const r=await fetch(`${API}/unirse-tarea`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({codigo:cod.toUpperCase(),estudianteId})});
+      const d=await r.json();
+      if(r.ok){cargarTareasEst(estudianteId);}
+    }catch(_){}
   };
-
-  const abrirTareaEst = t => {
-    setEstTareaAct(t);
-    setEstEntregada(t.entregada||false);
-    setEstCalificacion(t.calificacion||null);
-    setEstRespuestas({});setEstRespTexto("");setEstArchivo(null);
+  const resolverTarea=async(t)=>{
+    setEstTareaActiva(t);setEstYaEntrego(t.entregada||false);setEstEntregaData(null);
+    setEstRespuestas({});setEstRespuestaTexto("");setEstArchivo(null);
     setEstVista("resolver");
   };
-
-  const entregarTarea = async () => {
-    if(!estTareaAct||!estSesion)return;
-    if(!Object.keys(estRespuestas).length&&!estRespTexto&&!estArchivo){alert("Responde o adjunta un archivo");return;}
-    if(estTareaAct.fechaEntrega){const dl=new Date(estTareaAct.fechaEntrega+"T23:59:59");if(new Date()>dl){alert("⏰ La fecha ya venció.");return;}}
+  const entregarTarea=async()=>{
+    if(!estTareaActiva||!estSesion)return;
+    const tieneRespuestas = Object.keys(estRespuestas).length>0||estRespuestaTexto||estArchivo;
+    if(!tieneRespuestas){alert("Debes responder al menos una pregunta o subir un archivo");return;}
+    // Check deadline
+    if(estTareaActiva.fechaEntrega){
+      const deadline=new Date(estTareaActiva.fechaEntrega+"T23:59:59");
+      if(new Date()>deadline){alert("⏰ La fecha de entrega ya venció. No se puede entregar.");return;}
+    }
     setEstEnviando(true);
     try{
       const form=new FormData();
-      form.append("tareaId",estTareaAct.id);form.append("estudianteRegId",estSesion.id);
-      form.append("respuesta",estRespTexto);form.append("respuestasActividad",JSON.stringify(estRespuestas));
+      form.append("tareaId",estTareaActiva.id);
+      form.append("estudianteRegId",estSesion.id);
+      form.append("respuesta",estRespuestaTexto);
+      form.append("respuestasActividad",JSON.stringify(estRespuestas));
       if(estArchivo)form.append("archivo",estArchivo);
       const r=await fetch(`${API}/entregar-tarea`,{method:"POST",body:form});
       const d=await r.json();
       if(r.ok){
-        setEstEntregada(true);
-        setEstCalificacion(d.calificacion||null);
+        setEstYaEntrego(true);
+        setEstEntregaData(d.entrega);
+        if(d.autoCalificada){
+          alert(`✅ Entregado y calificado automáticamente.\n\nNota: ${d.notaAuto}\n${d.resultadoDetalle?.correctas||0}/${d.resultadoDetalle?.total||0} respuestas correctas`);
+        } else {
+          alert("¡Tarea entregada exitosamente! ✅");
+        }
         cargarTareasEst(estSesion.id);
       }else alert(d.mensaje);
-    }catch{alert("Error enviando");}
+    }catch{alert("Error enviando tarea");}
     setEstEnviando(false);
   };
 
-  // ── Panel entregas docente ─────────────────────────────
-  const verEntregas = async t => {
+  // ── Generar actividad IA ──────────────────────────────
+  const generarActividad=async()=>{
+    if(!ntTitulo){alert("Escribe el título de la tarea primero (será el tema de la actividad)");return;}
+    if(!ntArea){alert("Selecciona el área primero");return;}
+    if(!ntGrado){alert("Selecciona el grado primero");return;}
+    setGenerandoAct(true);
+    try{
+      const r=await fetch(`${API}/generar-actividad`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({tipo:ntTipo,tema:ntTitulo,area:ntArea,grado:ntGrado,cantidad:5})
+      });
+      if(!r.ok){alert("Error en el servidor al generar actividad");setGenerandoAct(false);return;}
+      const d=await r.json();
+      if(d.ok&&d.actividad){
+        setNtActividad(d.actividad);
+      } else {
+        alert("No se pudo generar la actividad. Verifica que el servidor esté activo.");
+      }
+    }catch(e){
+      alert("Error de conexión. Verifica que el backend esté funcionando.");
+      console.error(e);
+    }
+    setGenerandoAct(false);
+  };
+
+  const crearTarea=async()=>{
+    if(!ntTitulo){alert("Completa el título");return;}
+    const lista=ntEstudiantes.split("\n").map(s=>s.trim()).filter(s=>s.length>0);
+    if(lista.length===0){alert("Agrega al menos un estudiante");return;}
+    setCreandoTarea(true);
+    try{
+      const body={docenteId:usuario.id,titulo:ntTitulo,descripcion:ntDesc,tipo:ntTipo,
+                  actividad:ntActividad,area:ntArea,grado:ntGrado,fechaEntrega:ntFecha,
+                  estudiantesLista:lista};
+      const r=await fetch(`${API}/crear-tarea`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const d=await r.json();
+      if(r.ok){setTareaCreada(d);cargarTareas(usuario.id);}else alert(d.mensaje);
+    }catch{alert("Error creando tarea");}
+    setCreandoTarea(false);
+  };
+
+
+
+  const [listadoCompleto,setListadoCompleto]=useState([]);
+  const [filtroEntregas,setFiltroEntregas]=useState("todos"); // todos|entregaron|pendientes
+
+  const verEntregas=async(t)=>{
     setTareaActiva(t);
     try{
       const r=await fetch(`${API}/entregas-tarea/${t.id}`);
       const d=await r.json();
-      setListadoEntregas(d.listadoCompleto||[]);
-      setResumenEntregas({ total:d.total, entregados:d.totalEntregas, pendientes:d.totalPendientes, calificados:d.totalCalificados });
+      setEntregas(d.entregas||[]);
+      setSinEntregar(d.sinEntregar||[]);
+      setListadoCompleto(d.listadoCompleto||[]);
     }catch{alert("Error cargando entregas");}
-    setFiltroEstado("todos");
     setVista("ver_entregas");
   };
-
-  const calificar = async () => {
-    if(!calNota){alert("Ingresa la calificación");return;}
-    const nota = parseFloat(calNota);
-    if(isNaN(nota)||nota<0||nota>5){alert("La nota debe ser entre 0 y 5");return;}
-    try{
-      const r=await fetch(`${API}/calificar-entrega`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({entregaId:calEntregaId,calificacion:nota.toFixed(1),comentarioDocente:calComentario})});
-      const d=await r.json();
-      if(r.ok){alert("Calificación guardada ✅");setCalEntregaId(null);setCalNota("");setCalComentario("");verEntregas(tareaActiva);}
-      else alert(d.mensaje);
-    }catch{alert("Error calificando");}
+  const calificar=async()=>{
+    if(!calNota){alert("Ingresa una calificación");return;}
+    try{const r=await fetch(`${API}/calificar-entrega`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({entregaId:calEntregaId,calificacion:calNota,comentario:calComentario})});const d=await r.json();if(r.ok){alert("Calificación guardada ✅");setCalEntregaId(null);setCalNota("");setCalComentario("");verEntregas(tareaActiva);}else alert(d.mensaje);}
+    catch{alert("Error calificando");}
   };
-
-  const eliminarTarea = async id => {
-    if(!window.confirm("¿Eliminar esta tarea?"))return;
-    try{await fetch(`${API}/tarea/${id}`,{method:"DELETE"});cargarTareas(usuario.id);}
-    catch{alert("Error");}
-  };
-  const eliminarClase = async id => {
-    if(!window.confirm("¿Eliminar?"))return;
-    try{await fetch(`${API}/clase/${id}`,{method:"DELETE"});cargarClases(usuario.id);}
-    catch{alert("Error");}
-  };
-
-  const generarGuia = async () => {
+  const eliminarTarea=async(id)=>{if(!window.confirm("¿Eliminar esta tarea?"))return;try{await fetch(`${API}/tarea/${id}`,{method:"DELETE"});cargarTareas(usuario.id);}catch{alert("Error");}};
+  const eliminarClase=async(id)=>{if(!window.confirm("¿Eliminar?"))return;try{await fetch(`${API}/clase/${id}`,{method:"DELETE"});cargarClases(usuario.id);}catch{alert("Error");}};
+  const generarGuia=async()=>{
     setCargando(true);setContenido("");setPaso(7);setGuardadoOk(false);
     const getLbl=(l,id)=>l.find(x=>x.id===id)?.label||id;
     try{
       const r=await fetch(`${API}/generar-guia`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({institucion,docente,area,grado,periodo,fecha,tema,duracion,cargo:usuario?.cargo||"Docente",ciudad:usuario?.ciudad||"",nivelEducativo:nivelEdu,tipoApertura:getLbl(optApertura,apertura),estratDesarrollo:getLbl(optDesarrollo,desarrollo),retroalimentacion:getLbl(optRetro,retro),tipoCierre:getLbl(OPT_CIERRE,cierre),dejaTarea,estratTarea:getLbl(OPT_TAREA,tarea)})});
-      const d=await r.json();setContenido(d.contenido||"Sin contenido.");
+      const d=await r.json();setContenido(d.contenido||d.mensaje||"Sin contenido.");
     }catch{setContenido("❌ Error de conexión.");}
     setCargando(false);
   };
-  const guardarClase = async () => {
+  const guardarClase=async()=>{
     if(!contenido||!usuario)return;setGuardando(true);
     try{const r=await fetch(`${API}/guardar-clase`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:usuario.id,contenido,datos:{institucion,docente,area,grado,periodo,fecha,tema,duracion}})});const d=await r.json();if(r.ok){setGuardadoOk(true);cargarClases(usuario.id);}else alert(d.mensaje);}
     catch{alert("Error guardando");}
     setGuardando(false);
   };
-  const exportar = async tipo => {
+  const exportar=async(tipo)=>{
     if(!contenido||contenido.startsWith("❌")){alert("Genera una guía primero");return;}
     tipo==="word"?setDescargando(true):setDescPdf(true);
     try{
@@ -735,8 +551,8 @@ export default function App() {
     tipo==="word"?setDescargando(false):setDescPdf(false);
   };
 
-  // ── Header ────────────────────────────────────────────
-  const Header = ({ showNav=true }) => (
+  // ── HEADER ────────────────────────────────────────────
+  const Header=({showNav=true})=>(
     <div style={S.header}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <span style={S.logo}>🎓 EduClass Premium</span>
@@ -764,160 +580,298 @@ export default function App() {
   // ══════════════════════════════════════════════════════
   //  PORTAL ESTUDIANTE
   // ══════════════════════════════════════════════════════
-  if (vista==="portal_est") return (
+  if(vista==="portal_estudiante") return(
     <div style={S.fondo}>
       <div style={S.header}>
-        <span style={S.logo}>📚 Portal Estudiantil</span>
+        <span style={S.logo}>📚 Portal Estudiantil — EduClass</span>
         <button style={{...S.btnSm,color:C.textoS}} onClick={()=>setVista("login")}>← Soy docente</button>
       </div>
 
-      {estVista==="login"&&(<div style={{...S.pantalla,paddingTop:20}}><div style={{...S.card,maxWidth:460}}>
-        <div style={{textAlign:"center"}}><span style={{fontSize:44}}>📚</span><h1 style={{...S.titulo,fontSize:20,marginTop:8}}>Portal del Estudiante</h1><p style={S.sub}>Accede con tu cuenta para ver tus tareas</p></div>
-        <div><p style={S.label}>Usuario</p><input style={S.input} placeholder="Tu usuario" value={estUsuario} onChange={e=>setEstUsuario(e.target.value)} onKeyDown={e=>e.key==="Enter"&&loginEst()}/></div>
-        <div><p style={S.label}>Contraseña</p><input type="password" style={S.input} placeholder="••••••••" value={estPassword} onChange={e=>setEstPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&loginEst()}/></div>
-        {codigoUrl&&<div style={{background:"#0f2a47",borderRadius:8,padding:"10px 14px",border:`1px solid ${C.azul}`}}><p style={{color:C.azulC,margin:0,fontSize:13}}>🔗 Código detectado: <strong>{codigoUrl}</strong></p></div>}
-        <button style={S.btnAzul} onClick={loginEst}>Ingresar</button>
-        <button style={{...S.btnGris,borderColor:C.verde,color:C.verdeC}} onClick={()=>setEstVista("registro")}>¿Sin cuenta? Regístrate aquí</button>
-        {estMsg&&<p style={estMsg.includes("✅")?S.okMsg:S.err}>{estMsg}</p>}
-      </div></div>)}
-
-      {estVista==="registro"&&(<div style={{...S.pantalla,paddingTop:20}}><div style={{...S.card,maxWidth:460}}>
-        <h1 style={{...S.titulo,color:C.ok,fontSize:20}}>Crear cuenta de estudiante</h1>
-        <div><p style={S.label}>Nombre completo *</p><input style={S.input} placeholder="Ej: Juan Pérez" value={estNombre} onChange={e=>setEstNombre(e.target.value)}/></div>
-        <div><p style={S.label}>Usuario * (sin espacios)</p><input style={S.input} placeholder="Ej: juanperez2024" value={estUsuario} onChange={e=>setEstUsuario(e.target.value.toLowerCase().replace(/\s+/g,""))}/></div>
-        <div><p style={S.label}>Contraseña *</p><input type="password" style={S.input} placeholder="Mínimo 6 caracteres" value={estPassword} onChange={e=>setEstPassword(e.target.value)}/></div>
-        <div style={S.fila}>
-          <div style={{flex:1}}><p style={S.label}>Grado</p><select style={S.select} value={estGrado} onChange={e=>setEstGrado(e.target.value)}><option value="">Seleccionar</option>{["Transición","1°","2°","3°","4°","5°","6°","7°","8°","9°","10°","11°"].map(g=><option key={g}>{g}</option>)}</select></div>
-          <div style={{flex:1}}><p style={S.label}>Institución</p><input style={S.input} placeholder="Colegio" value={estInstitucion} onChange={e=>setEstInstitucion(e.target.value)}/></div>
-        </div>
-        <button style={S.btnVerde} onClick={registrarEst}>Crear mi cuenta</button>
-        <button style={S.btnGris} onClick={()=>setEstVista("login")}>← Ya tengo cuenta</button>
-        {estMsg&&<p style={estMsg.includes("✅")?S.okMsg:S.err}>{estMsg}</p>}
-      </div></div>)}
-
-      {estVista==="dashboard"&&estSesion&&(<div style={S.contenedor}>
-        <div style={{background:`linear-gradient(135deg,#0f2a47,#0a1a35)`,borderRadius:14,padding:"20px 24px",marginBottom:20,border:`1px solid ${C.azul}`}}>
-          <h2 style={{color:C.texto,fontSize:18,margin:"0 0 4px",fontFamily:FT}}>¡Hola, {estSesion.nombre}! 👋</h2>
-          <p style={{color:C.textoS,margin:"0 0 12px",fontSize:13}}>Grado {estSesion.grado||""} · {estSesion.institucion||""}</p>
-          <div style={S.fila}>
-            <input style={{...S.input,width:160,padding:"8px 12px",fontSize:13}} placeholder="Código de tarea" value={estCodigo} onChange={e=>setEstCodigo(e.target.value.toUpperCase())}/>
-            <button style={{...S.btnAzul,width:"auto",padding:"8px 16px",fontSize:13}} onClick={()=>estCodigo&&unirseATarea(estSesion.id,estCodigo).then(()=>setEstCodigo(""))}>🔗 Unirme</button>
+      {/* Login estudiante */}
+      {estVista==="login"&&(
+        <div style={{...S.pantalla,paddingTop:20}}>
+          <div style={{...S.card,maxWidth:460}}>
+            <div style={{textAlign:"center"}}><span style={{fontSize:44}}>📚</span>
+              <h1 style={{...S.titulo,fontSize:20,marginTop:8}}>Portal del Estudiante</h1>
+              <p style={S.sub}>Ingresa con tu cuenta para ver tus tareas</p>
+            </div>
+            <div><p style={S.label}>Usuario</p><input style={S.input} placeholder="Tu nombre de usuario" value={estUsuario} onChange={e=>setEstUsuario(e.target.value)} onKeyDown={e=>e.key==="Enter"&&loginEstudianteReg()}/></div>
+            <div><p style={S.label}>Contraseña</p><input type="password" style={S.input} placeholder="••••••••" value={estPassword} onChange={e=>setEstPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&loginEstudianteReg()}/></div>
+            {codigoUrl&&<div style={{background:"#0f2a47",borderRadius:8,padding:"10px 14px",border:`1px solid ${C.azul}`}}><p style={{color:C.azulC,margin:0,fontSize:13}}>🔗 Código de tarea detectado: <strong>{codigoUrl}</strong></p></div>}
+            <button style={S.btnAzul} onClick={loginEstudianteReg}>Ingresar</button>
+            <button style={{...S.btnGris,borderColor:C.verde,color:C.verdeC}} onClick={()=>setEstVista("registro")}>¿No tienes cuenta? Regístrate</button>
+            {estMsg&&<p style={estMsg.includes("✅")?S.ok_msg:S.err}>{estMsg}</p>}
           </div>
         </div>
-        <h3 style={{color:C.textoS,fontSize:12,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Mis tareas</h3>
-        {estTareas.length===0?(
-          <div style={{...S.bloque,textAlign:"center",padding:40}}>
-            <p style={{fontSize:40,margin:"0 0 12px"}}>📋</p>
-            <p style={{color:C.textoS,fontSize:14,margin:0}}>No tienes tareas asignadas aún.</p>
+      )}
+
+      {/* Registro estudiante */}
+      {estVista==="registro"&&(
+        <div style={{...S.pantalla,paddingTop:20}}>
+          <div style={{...S.card,maxWidth:480}}>
+            <h1 style={{...S.titulo,color:C.ok,fontSize:20}}>Crear cuenta de estudiante</h1>
+            <p style={S.sub}>Si ya estás en la lista del colegio ingresa tu número de documento para activar tu cuenta automáticamente.</p>
+            <div style={{background:"#0f2a47",borderRadius:8,padding:"10px 14px",border:`1px solid ${C.azul}`,marginBottom:6}}>
+              <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 4px",fontSize:13}}>🔑 Si estás en el registro del colegio:</p>
+              <p style={{color:C.textoS,fontSize:12,margin:0}}>Tu usuario ya existe. Ingresa tu documento y elige una nueva contraseña para activarla.</p>
+            </div>
+            <div><p style={S.label}>Número de documento *</p><input style={S.input} placeholder="Ej: 1118073076" value={estInstitucion} onChange={e=>setEstInstitucion(e.target.value)} onKeyDown={e=>e.key==="Tab"&&e.target.blur()}/></div>
+            <div><p style={S.label}>Usuario * (puedes usar el que te asignaron o crear uno nuevo)</p><input style={S.input} placeholder="Ej: almayad076 o elige el tuyo" value={estUsuario} onChange={e=>setEstUsuario(e.target.value.toLowerCase().replace(/[^a-z0-9]/g,""))}/></div>
+            <div><p style={S.label}>Contraseña * (mínimo 6 caracteres)</p><input type="password" style={S.input} placeholder="Elige una contraseña segura" value={estPassword} onChange={e=>setEstPassword(e.target.value)}/></div>
+            <div><p style={S.label}>Nombre completo (si no estás en la lista)</p><input style={S.input} placeholder="Solo si no estás registrado en el colegio" value={estNombre} onChange={e=>setEstNombre(e.target.value)}/></div>
+            <button style={S.btnVerde} onClick={async()=>{
+              if(!estUsuario||!estPassword){setEstMsg("Completa usuario y contraseña");return;}
+              try{
+                const r=await fetch(`${API}/registro-estudiante`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre:estNombre||estUsuario,usuario:estUsuario,password:estPassword,documento:estInstitucion,grado:estGrado})});
+                const d=await r.json();
+                if(r.ok){setEstMsg("✅ "+d.mensaje);setTimeout(()=>{setEstVista("login");setEstMsg("");},2000);}
+                else setEstMsg(d.mensaje||"Error");
+              }catch{setEstMsg("Error de conexión");}
+            }}>Activar / Crear mi cuenta</button>
+            <button style={S.btnGris} onClick={()=>setEstVista("login")}>← Ya tengo cuenta</button>
+            {estMsg&&<p style={estMsg.includes("✅")?S.ok_msg:S.err}>{estMsg}</p>}
           </div>
-        ):(
-          estTareas.map(t=>(
-            <div key={t.id} style={{background:"#0a1128",border:`1px solid ${t.entregada?C.verde:C.borde}`,borderRadius:10,padding:"14px 16px",marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                    <p style={{color:C.azulC,fontWeight:"bold",margin:0,fontSize:14}}>{t.titulo}</p>
-                    <span style={{background:C.morado,color:"#fff",fontSize:10,padding:"2px 8px",borderRadius:20}}>{TIPOS_ACTIVIDAD.find(x=>x.id===t.tipo)?.label||t.tipo}</span>
-                  </div>
-                  <p style={{color:C.textoS,fontSize:12,margin:"0 0 4px"}}>{t.area} · Grado {t.grado}{t.fechaEntrega&&` · 📅 ${t.fechaEntrega}`}</p>
-                  {/* Estado — sin mostrar detalle de respuestas */}
-                  {t.vencida&&!t.entregada&&<p style={{color:C.err,fontSize:12,margin:0,fontWeight:"bold"}}>⏰ Fecha vencida</p>}
-                  {t.entregada&&(
-                    <p style={{color:t.calificacion!=null?C.naranja:C.ok,fontSize:12,margin:0,fontWeight:"bold"}}>
-                      {t.calificacion!=null ? `✅ Nota: ${t.calificacion}` : "✅ Entregada — esperando calificación"}
-                    </p>
-                  )}
-                  {!t.entregada&&!t.vencida&&<p style={{color:C.naranja,fontSize:11,margin:0}}>⏳ Pendiente{t.fechaEntrega?` · Entrega: ${t.fechaEntrega}`:""}</p>}
-                </div>
-                <button style={{...S.btnSm,color:(t.entregada||t.vencida)?C.textoS:C.azulC,borderColor:(t.entregada||t.vencida)?C.borde:C.azul}}
-                  onClick={()=>abrirTareaEst(t)}>
-                  {t.entregada?"👁 Ver":t.vencida?"⏰ Vencida":"📝 Resolver"}
-                </button>
+        </div>
+      )}
+
+      {/* Dashboard estudiante */}
+      {estVista==="dashboard"&&estSesion&&(
+        <div style={S.contenedor}>
+          {/* Bienvenida */}
+          <div style={{background:`linear-gradient(135deg,#0f2a47,#0a1a35)`,borderRadius:14,padding:"20px 24px",marginBottom:20,border:`1px solid ${C.azul}`}}>
+            <h2 style={{color:C.texto,fontSize:18,margin:"0 0 4px",fontFamily:F_TITULO}}>¡Hola, {estSesion.nombre}! 👋</h2>
+            <p style={{color:C.textoS,margin:"0 0 12px",fontSize:13}}>Grado {estSesion.grado||""} · {estSesion.institucion||""}</p>
+            <div style={S.fila}>
+              <div style={{...S.fila,gap:8}}>
+                <input style={{...S.input,width:160,padding:"8px 12px",fontSize:13}} placeholder="Código de tarea" value={estCodigo} onChange={e=>setEstCodigo(e.target.value.toUpperCase())}/>
+                <button style={{...S.btnAzul,width:"auto",padding:"8px 16px",fontSize:13}} onClick={()=>{if(estCodigo)unirseATarea(estSesion.id,estCodigo).then(()=>setEstCodigo(""));}}>🔗 Unirme</button>
               </div>
             </div>
-          ))
-        )}
-        <button style={{...S.btnGris,marginTop:16}} onClick={()=>{setEstSesion(null);setEstVista("login");setEstTareas([]);}}>Cerrar sesión</button>
-      </div>)}
-
-      {estVista==="resolver"&&estTareaAct&&(<div style={S.contenedor}>
-        <button style={{...S.btnSm,marginBottom:16}} onClick={()=>setEstVista("dashboard")}>← Mis tareas</button>
-        <div style={S.bloque}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-            <h2 style={{...S.tBloque,margin:0,fontSize:17}}>{estTareaAct.titulo}</h2>
-            <span style={{background:C.morado,color:"#fff",fontSize:11,padding:"3px 10px",borderRadius:20}}>{TIPOS_ACTIVIDAD.find(x=>x.id===estTareaAct.tipo)?.label}</span>
           </div>
-          <p style={{color:C.textoS,fontSize:13,margin:"0 0 12px"}}>{estTareaAct.area} · Grado {estTareaAct.grado}</p>
-          {estTareaAct.descripcion&&(<div style={{background:"#0f2a47",borderRadius:8,padding:"12px 14px",border:`1px solid ${C.azul}`,marginBottom:16}}><p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 4px",fontSize:12}}>📋 Instrucciones:</p><p style={{color:C.texto,fontSize:13,margin:0,lineHeight:1.6}}>{estTareaAct.descripcion}</p></div>)}
 
-          {estEntregada ? (
-            <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:10,padding:20,textAlign:"center"}}>
-              <p style={{fontSize:40,margin:"0 0 8px"}}>✅</p>
-              <p style={{color:C.ok,fontWeight:"bold",fontSize:16,margin:"0 0 8px"}}>Tarea entregada</p>
-              {estCalificacion!=null ? (
-                <>
-                  <p style={{color:C.textoS,fontSize:13,margin:"0 0 6px"}}>Tu calificación:</p>
-                  <p style={{color:C.naranja,fontSize:48,fontWeight:"bold",margin:"0 0 8px",fontFamily:FT}}>{estCalificacion}</p>
-                  <p style={{color:C.textoS,fontSize:12,margin:0}}>Escala 0.0 – 5.0</p>
-                </>
-              ) : (
-                <p style={{color:C.textoS,fontSize:13,margin:0}}>Tu docente revisará pronto y asignará tu nota.</p>
-              )}
+          {/* Mis tareas */}
+          <h3 style={{color:C.textoS,fontSize:12,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Mis tareas asignadas</h3>
+          {estTareasAsignadas.length===0?(
+            <div style={{...S.bloque,textAlign:"center",padding:40}}>
+              <p style={{fontSize:40,margin:"0 0 12px"}}>📋</p>
+              <p style={{color:C.textoS,fontSize:14,margin:"0 0 6px"}}>No tienes tareas asignadas aún.</p>
+              <p style={{color:"#374151",fontSize:13,margin:0}}>Pide el código a tu docente y pégalo arriba.</p>
             </div>
-          ) : (
-            <>
-              {estTareaAct.actividad&&(<div style={{marginBottom:16}}><p style={{color:C.texto,fontWeight:"bold",margin:"0 0 12px",fontFamily:FT}}>Resuelve la actividad:</p><ResolverActividad actividad={estTareaAct.actividad} tipo={estTareaAct.tipo} onRespuestas={setEstRespuestas}/></div>)}
-              <div style={{marginBottom:12}}><p style={S.label}>✏️ {estTareaAct.actividad?"Comentarios adicionales:":"Tu respuesta:"}</p><textarea style={{...S.textarea,minHeight:100}} placeholder="Escribe aquí..." value={estRespTexto} onChange={e=>setEstRespTexto(e.target.value)}/></div>
-              <div style={{marginBottom:16}}><p style={S.label}>📎 Adjuntar archivo</p><div style={S.fila}><button style={{...S.btnGris,width:"auto",padding:"8px 14px"}} onClick={()=>archivoRef.current.click()}>📁 Seleccionar</button>{estArchivo&&<span style={{color:C.ok,fontSize:12}}>✅ {estArchivo.name}</span>}</div><input ref={archivoRef} type="file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png" style={{display:"none"}} onChange={e=>setEstArchivo(e.target.files[0])}/></div>
-              <button style={{...S.btnVerde,opacity:estEnviando?0.7:1}} disabled={estEnviando} onClick={entregarTarea}>{estEnviando?"⏳ Enviando...":"📤 Entregar tarea"}</button>
-            </>
+          ):(
+            estTareasAsignadas.map(t=>(
+              <div key={t.id} style={{background:"#0a1128",border:`1px solid ${t.entregada?C.verde:C.borde}`,borderRadius:10,padding:"14px 16px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                      <p style={{color:C.azulC,fontWeight:"bold",margin:0,fontSize:14}}>{t.titulo}</p>
+                      <span style={{background:TIPOS_ACTIVIDAD.find(x=>x.id===t.tipo)?.id?C.morado:C.azul,color:"#fff",fontSize:10,padding:"2px 8px",borderRadius:20}}>{TIPOS_ACTIVIDAD.find(x=>x.id===t.tipo)?.label||t.tipo}</span>
+                    </div>
+                    <p style={{color:C.textoS,fontSize:12,margin:"0 0 4px"}}>{t.area} · Grado {t.grado}{t.fechaEntrega&&` · 📅 ${t.fechaEntrega}`}</p>
+                    {t.vencida&&!t.entregada&&<p style={{color:C.err,fontSize:12,margin:0,fontWeight:"bold"}}>⏰ Fecha vencida — No se puede entregar</p>}
+                    {t.entregada&&(
+                      <p style={{color:t.calificacion!=null?C.naranja:C.ok,fontSize:12,margin:0,fontWeight:"bold"}}>
+                        {t.calificacion!=null?`✅ Nota: ${t.calificacion}${t.comentario?` — ${t.comentario}`:""}` :"✅ Entregado — Pendiente de calificación"}
+                      </p>
+                    )}
+                    {!t.entregada&&!t.vencida&&t.fechaEntrega&&<p style={{color:C.naranja,fontSize:11,margin:0}}>📅 Entregar antes del: {t.fechaEntrega}</p>}
+                  </div>
+                  <button style={{...S.btnSm,color:(t.entregada||t.vencida)?C.textoS:C.azulC,borderColor:(t.entregada||t.vencida)?C.borde:C.azul}} onClick={()=>resolverTarea(t)}>
+                    {t.entregada?"👁 Ver":t.vencida?"⏰ Vencida":"📝 Resolver"}
+                  </button>
+                </div>
+              </div>
+            ))
           )}
+          <button style={{...S.btnGris,marginTop:16}} onClick={()=>{setEstSesion(null);setEstVista("login");setEstTareasAsignadas([]);}}>Cerrar sesión</button>
         </div>
-      </div>)}
+      )}
+
+      {/* Resolver tarea */}
+      {estVista==="resolver"&&estTareaActiva&&(
+        <div style={S.contenedor}>
+          <button style={{...S.btnSm,marginBottom:16}} onClick={()=>setEstVista("dashboard")}>← Mis tareas</button>
+          <div style={S.bloque}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+              <h2 style={{...S.tBloque,margin:0,fontSize:17}}>{estTareaActiva.titulo}</h2>
+              <span style={{background:C.morado,color:"#fff",fontSize:11,padding:"3px 10px",borderRadius:20}}>{TIPOS_ACTIVIDAD.find(x=>x.id===estTareaActiva.tipo)?.label||estTareaActiva.tipo}</span>
+            </div>
+            <p style={{color:C.textoS,fontSize:13,margin:"0 0 12px"}}>{estTareaActiva.area} · Grado {estTareaActiva.grado}</p>
+            {estTareaActiva.descripcion&&(
+              <div style={{background:"#0f2a47",borderRadius:8,padding:"12px 14px",border:`1px solid ${C.azul}`,marginBottom:16}}>
+                <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 4px",fontSize:12}}>📋 Instrucciones del docente:</p>
+                <p style={{color:C.texto,fontSize:13,margin:0,lineHeight:1.6}}>{estTareaActiva.descripcion}</p>
+              </div>
+            )}
+
+            {estYaEntrego?(
+              <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:10,padding:16}}>
+                <p style={{color:C.ok,fontWeight:"bold",fontSize:15,margin:"0 0 10px"}}>✅ Tarea entregada</p>
+                {estEntregaData?.calificacion!=null?(
+                  <>
+                    <p style={{color:C.texto,fontSize:13,margin:"0 0 4px"}}>Tu calificación:</p>
+                    <p style={{color:C.naranja,fontSize:30,fontWeight:"bold",margin:"0 0 4px",fontFamily:F_TITULO}}>{estEntregaData.calificacion}</p>
+                    <p style={{color:C.textoS,fontSize:12,margin:"0 0 8px"}}>{estEntregaData.comentario}</p>
+                    {estEntregaData.resultadoDetalle&&(
+                      <div style={{marginTop:12}}>
+                        <p style={{color:C.texto,fontWeight:"bold",fontSize:13,margin:"0 0 8px"}}>Detalle de respuestas:</p>
+                        {estEntregaData.resultadoDetalle.detalle?.map((d,i)=>(
+                          <div key={i} style={{background:d.esCorrecta?"#052e16":"#2d0a0a",borderRadius:7,padding:"7px 10px",marginBottom:6,border:`1px solid ${d.esCorrecta?C.ok:C.err}`}}>
+                            <p style={{color:C.texto,fontSize:12,margin:"0 0 3px"}}>{i+1}. {d.pregunta}</p>
+                            <p style={{color:d.esCorrecta?C.ok:C.err,fontSize:12,margin:"0 0 2px"}}>{d.esCorrecta?"✅":"❌"} Tu respuesta: <strong>{d.respEst||"Sin respuesta"}</strong></p>
+                            {!d.esCorrecta&&<p style={{color:C.textoS,fontSize:11,margin:0}}>Correcta: {d.respCorrecta}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ):(
+                  <p style={{color:C.textoS,fontSize:13,margin:0}}>Tu docente revisará tu trabajo pronto.</p>
+                )}
+              </div>
+            ):(
+              <>
+                {/* Actividad interactiva */}
+                {estTareaActiva.actividad&&(
+                  <div style={{marginBottom:16}}>
+                    <p style={{color:C.texto,fontWeight:"bold",margin:"0 0 12px",fontFamily:F_TITULO}}>Resuelve la actividad:</p>
+                    <ResolverActividad actividad={estTareaActiva.actividad} tipo={estTareaActiva.tipo} onRespuestas={setEstRespuestas}/>
+                  </div>
+                )}
+
+                {/* Respuesta abierta */}
+                <div style={{marginBottom:12}}>
+                  <p style={S.label}>✏️ {estTareaActiva.actividad?"Comentarios adicionales:":"Tu respuesta / desarrollo:"}</p>
+                  <textarea style={{...S.textarea,minHeight:100}} placeholder="Escribe aquí..." value={estRespuestaTexto} onChange={e=>setEstRespuestaTexto(e.target.value)}/>
+                </div>
+
+                {/* Subir archivo */}
+                <div style={{marginBottom:16}}>
+                  <p style={S.label}>📎 Adjuntar archivo (foto, PDF, documento)</p>
+                  <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                    <button style={{...S.btnGris,width:"auto",padding:"8px 14px"}} onClick={()=>archivoRef.current.click()}>📁 Seleccionar</button>
+                    {estArchivo&&<span style={{color:C.ok,fontSize:12}}>✅ {estArchivo.name}</span>}
+                  </div>
+                  <input ref={archivoRef} type="file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png" style={{display:"none"}} onChange={e=>setEstArchivo(e.target.files[0])}/>
+                </div>
+
+                <button style={{...S.btnVerde,opacity:estEnviando?0.7:1}} disabled={estEnviando} onClick={entregarTarea}>
+                  {estEnviando?"⏳ Enviando...":"📤 Entregar tarea"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
-  // ── Login / Registro Docente ───────────────────────────
-  if(vista==="login") return(<div style={S.pantalla}><div style={S.card}><div style={{textAlign:"center"}}><span style={{fontSize:48}}>🎓</span><h1 style={S.titulo}>EduClass Premium</h1><p style={S.sub}>Plataforma pedagógica con IA</p></div><div><p style={S.label}>Correo</p><input style={S.input} placeholder="docente@colegio.edu.co" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></div><div><p style={S.label}>Contraseña</p><input type="password" style={S.input} placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></div><button style={S.btnAzul} onClick={login}>Ingresar como docente</button><button style={S.btnGris} onClick={()=>{setVista("registro");setMsgAuth("");}}>Crear cuenta docente</button><div style={S.sep}/><button style={{...S.btnMorado}} onClick={()=>setVista("portal_est")}>📚 Soy estudiante</button>{msgAuth&&<p style={S.err}>{msgAuth}</p>}</div></div>);
+  // ══════════════════════════════════════════════════════
+  //  LOGIN / REGISTRO DOCENTE
+  // ══════════════════════════════════════════════════════
+  if(vista==="login") return(
+    <div style={S.pantalla}>
+      <div style={S.card}>
+        <div style={{textAlign:"center"}}><span style={{fontSize:48}}>🎓</span><h1 style={S.titulo}>EduClass Premium</h1><p style={S.sub}>Plataforma pedagógica con IA</p></div>
+        <div><p style={S.label}>Correo electrónico</p><input style={S.input} placeholder="docente@colegio.edu.co" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></div>
+        <div><p style={S.label}>Contraseña</p><input type="password" style={S.input} placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></div>
+        <button style={S.btnAzul} onClick={login}>Ingresar como docente</button>
+        <button style={S.btnGris} onClick={()=>{setVista("registro");setMsgAuth("");}}>Crear cuenta docente</button>
+        <div style={S.sep}/>
+        <button style={{...S.btnMorado}} onClick={()=>setVista("portal_estudiante")}>📚 Soy estudiante — Ver mis tareas</button>
+        {msgAuth&&<p style={S.err}>{msgAuth}</p>}
+      </div>
+    </div>
+  );
 
-  if(vista==="registro") return(<div style={S.pantalla}><div style={{...S.card,maxWidth:520}}><h1 style={{...S.titulo,color:C.ok,fontSize:20}}>Registro de Docente 🧑‍🏫</h1><div><p style={S.label}>Nombre completo *</p><input style={S.input} placeholder="Ej: María González" value={nombre} onChange={e=>setNombre(e.target.value)}/></div><div><p style={S.label}>Correo *</p><input style={S.input} placeholder="docente@colegio.edu.co" value={email} onChange={e=>setEmail(e.target.value)}/></div><div><p style={S.label}>Contraseña *</p><input type="password" style={S.input} placeholder="Mínimo 6 caracteres" value={password} onChange={e=>setPassword(e.target.value)}/></div><div style={S.sep}/><div><p style={S.label}>Institución</p><input style={S.input} placeholder="I.E. Rural La Esperanza" value={regInst} onChange={e=>setRegInst(e.target.value)}/></div><div style={S.fila}><div style={{flex:1}}><p style={S.label}>Cargo</p><select style={S.select} value={regCargo} onChange={e=>setRegCargo(e.target.value)}>{["Docente","Coordinador/a","Rector/a","Orientador/a"].map(c=><option key={c}>{c}</option>)}</select></div><div style={{flex:1}}><p style={S.label}>Ciudad</p><input style={S.input} placeholder="Bogotá" value={regCiudad} onChange={e=>setRegCiudad(e.target.value)}/></div></div><button style={S.btnVerde} onClick={registrar}>Registrarme</button><button style={S.btnGris} onClick={()=>{setVista("login");setMsgAuth("");}}>← Volver</button>{msgAuth&&<p style={msgAuth.includes("exitoso")?S.okMsg:S.err}>{msgAuth}</p>}</div></div>);
-
-  // ── Dashboard ──────────────────────────────────────────
-  if(vista==="dashboard") return(<div style={S.fondo}><Header/><div style={S.contenedor}><div style={{background:`linear-gradient(135deg,#0f2a47,#0a1a35)`,borderRadius:14,padding:"22px 26px",marginBottom:22,border:`1px solid ${C.azul}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}><div><h2 style={{color:C.texto,fontSize:19,margin:"0 0 3px",fontFamily:FT}}>¡Bienvenido/a, {usuario?.nombre?.split(" ")[0]}! 👋</h2><p style={{color:C.textoS,margin:0,fontSize:13}}>{usuario?.cargo||"Docente"} · {usuario?.institucion||"Sin institución"} · {usuario?.ciudad||""}</p></div><div style={{display:"flex",gap:8}}><div style={{background:"#0a1128",border:`1px solid ${C.borde}`,borderRadius:10,padding:"10px 16px",textAlign:"center"}}><p style={{color:C.azulC,fontSize:20,fontWeight:"bold",margin:0}}>{misClases.length}</p><p style={{color:C.textoS,fontSize:10,margin:0}}>Clases</p></div><div style={{background:"#0a1128",border:`1px solid ${C.borde}`,borderRadius:10,padding:"10px 16px",textAlign:"center"}}><p style={{color:C.naranja,fontSize:20,fontWeight:"bold",margin:0}}>{misTareas.length}</p><p style={{color:C.textoS,fontSize:10,margin:0}}>Tareas</p></div></div></div><p style={{color:C.textoS,fontSize:11,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Módulos principales</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:20}}><DashCard icon="📝" titulo="Nueva clase" desc="Guía pedagógica con IA" color={C.azul} onClick={()=>{reset();setVista("ia");}}/><DashCard icon="📋" titulo="Tareas" desc="Asignar y revisar entregas" color={C.naranja} onClick={()=>setVista("tareas")} badge={misTareas.filter(t=>t.pendientes>0).length||null}/><DashCard icon="📂" titulo="Mis clases" desc="Historial de guías" color={C.verdeC} onClick={()=>setVista("historial")} badge={misClases.length||null}/><DashCard icon="⚙️" titulo="Mi perfil" desc="Escudo, bandera y datos" color={C.morado} onClick={()=>setVista("perfil")}/></div><p style={{color:C.textoS,fontSize:11,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Próximamente</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:20}}><DashCard icon="📊" titulo="Evaluaciones" desc="Rúbricas" color={C.rojo} disabled/><DashCard icon="📅" titulo="Planeador anual" desc="Año escolar" color={C.dorado} disabled/><DashCard icon="👥" titulo="Mis estudiantes" desc="Grupos" color={C.verdeC} disabled/><DashCard icon="📈" titulo="Reportes" desc="Estadísticas" color={C.azulC} disabled/></div>{misClases.length>0&&(<><p style={{color:C.textoS,fontSize:11,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Clases recientes</p><div style={S.bloque}>{misClases.slice(0,3).map(c=>(<TarjetaClase key={c.id} clase={c} onVer={async cl=>{const r=await fetch(`${API}/clase/${cl.id}`);const d=await r.json();setClaseActiva(d.clase);setVista("verClase");}} onEliminar={eliminarClase}/>))}{misClases.length>3&&<button style={{...S.btnGris,marginTop:8}} onClick={()=>setVista("historial")}>Ver todas ({misClases.length}) →</button>}</div></>)}</div></div>);
+  if(vista==="registro") return(
+    <div style={S.pantalla}>
+      <div style={{...S.card,maxWidth:520}}>
+        <h1 style={{...S.titulo,color:C.ok,fontSize:20}}>Registro de Docente 🧑‍🏫</h1>
+        <div><p style={S.label}>Nombre completo *</p><input style={S.input} placeholder="Ej: María González" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
+        <div><p style={S.label}>Correo electrónico *</p><input style={S.input} placeholder="docente@colegio.edu.co" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+        <div><p style={S.label}>Contraseña *</p><input type="password" style={S.input} placeholder="Mínimo 6 caracteres" value={password} onChange={e=>setPassword(e.target.value)}/></div>
+        <div style={S.sep}/>
+        <div><p style={S.label}>Institución</p><input style={S.input} placeholder="I.E. Rural La Esperanza" value={regInst} onChange={e=>setRegInst(e.target.value)}/></div>
+        <div style={S.fila}>
+          <div style={{flex:1}}><p style={S.label}>Cargo</p><select style={S.select} value={regCargo} onChange={e=>setRegCargo(e.target.value)}>{["Docente","Coordinador/a","Rector/a","Orientador/a"].map(c=><option key={c}>{c}</option>)}</select></div>
+          <div style={{flex:1}}><p style={S.label}>Ciudad</p><input style={S.input} placeholder="Bogotá" value={regCiudad} onChange={e=>setRegCiudad(e.target.value)}/></div>
+        </div>
+        <button style={S.btnVerde} onClick={registrar}>Registrarme</button>
+        <button style={S.btnGris} onClick={()=>{setVista("login");setMsgAuth("");}}>← Volver</button>
+        {msgAuth&&<p style={msgAuth.includes("exitoso")?S.ok_msg:S.err}>{msgAuth}</p>}
+      </div>
+    </div>
+  );
 
   // ══════════════════════════════════════════════════════
-  //  GESTIÓN DE TAREAS
+  //  DASHBOARD DOCENTE
   // ══════════════════════════════════════════════════════
-  if(vista==="tareas") return(
+  if(vista==="dashboard") return(
     <div style={S.fondo}>
       <Header/>
-      {mostrarModal&&(
-        <ModalAsignarTarea
-          docenteId={usuario.id}
-          onCerrar={()=>setMostrarModal(false)}
-          onCreada={tarea=>{
-            setMostrarModal(false);
-            cargarTareas(usuario.id);
-            alert(`✅ Tarea "${tarea.titulo}" creada. Código: ${tarea.codigo}`);
-          }}
-        />
-      )}
+      <div style={S.contenedor}>
+        <div style={{background:`linear-gradient(135deg,#0f2a47,#0a1a35)`,borderRadius:14,padding:"22px 26px",marginBottom:22,border:`1px solid ${C.azul}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+          <div>
+            <h2 style={{color:C.texto,fontSize:19,margin:"0 0 3px",fontFamily:F_TITULO}}>¡Bienvenido/a, {usuario?.nombre?.split(" ")[0]}! 👋</h2>
+            <p style={{color:C.textoS,margin:0,fontSize:13}}>{usuario?.cargo||"Docente"} · {usuario?.institucion||"Sin institución"} · {usuario?.ciudad||""}</p>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <div style={{background:"#0a1128",border:`1px solid ${C.borde}`,borderRadius:10,padding:"10px 16px",textAlign:"center"}}>
+              <p style={{color:C.azulC,fontSize:20,fontWeight:"bold",margin:0}}>{misClases.length}</p>
+              <p style={{color:C.textoS,fontSize:10,margin:0}}>Clases</p>
+            </div>
+            <div style={{background:"#0a1128",border:`1px solid ${C.borde}`,borderRadius:10,padding:"10px 16px",textAlign:"center"}}>
+              <p style={{color:C.naranja,fontSize:20,fontWeight:"bold",margin:0}}>{misTareas.length}</p>
+              <p style={{color:C.textoS,fontSize:10,margin:0}}>Tareas</p>
+            </div>
+          </div>
+        </div>
+
+        <p style={{color:C.textoS,fontSize:11,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Módulos principales</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:20}}>
+          <DashCard icon="📝" titulo="Nueva clase" desc="Genera guía pedagógica con IA" color={C.azul} onClick={()=>{reset();setVista("ia");}}/>
+          <DashCard icon="📋" titulo="Tareas" desc="Crea y revisa entregas" color={C.naranja} onClick={()=>setVista("tareas")} badge={misTareas.filter(t=>t.totalEntregas>0).length||null}/>
+          <DashCard icon="📂" titulo="Mis clases" desc="Historial de guías guardadas" color={C.verdeC} onClick={()=>setVista("historial")} badge={misClases.length||null}/>
+          <DashCard icon="⚙️" titulo="Mi perfil" desc="Escudo, bandera y datos" color={C.morado} onClick={()=>setVista("perfil")}/>
+        </div>
+
+        <p style={{color:C.textoS,fontSize:11,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Próximamente</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:20}}>
+          <DashCard icon="📊" titulo="Evaluaciones" desc="Crea evaluaciones y rúbricas" color={C.rojo} disabled/>
+          <DashCard icon="📅" titulo="Planeador anual" desc="Planea el año escolar" color={C.dorado} disabled/>
+          <DashCard icon="👥" titulo="Mis estudiantes" desc="Gestiona tus grupos" color={C.verdeC} disabled/>
+          <DashCard icon="📈" titulo="Reportes" desc="Estadísticas y desempeño" color={C.azulC} disabled/>
+        </div>
+
+        {misClases.length>0&&(
+          <>
+            <p style={{color:C.textoS,fontSize:11,fontWeight:"600",letterSpacing:1,textTransform:"uppercase",margin:"0 0 12px"}}>Clases recientes</p>
+            <div style={S.bloque}>
+              {misClases.slice(0,3).map(c=>(<TarjetaClase key={c.id} clase={c} onVer={async(clase)=>{const r=await fetch(`${API}/clase/${clase.id}`);const d=await r.json();setClaseActiva(d.clase);setVista("verClase");}} onEliminar={eliminarClase}/>))}
+              {misClases.length>3&&<button style={{...S.btnGris,marginTop:8}} onClick={()=>setVista("historial")}>Ver todas ({misClases.length}) →</button>}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  // ══════════════════════════════════════════════════════
+  //  TAREAS DOCENTE
+  // ══════════════════════════════════════════════════════
+  if(vista==="tareas") return(
+    <div style={S.fondo}><Header/>
       <div style={S.contenedor}>
         <div style={S.bloque}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
             <h2 style={S.tBloque}>📋 Gestión de Tareas</h2>
-            <button style={{...S.btnVerde,width:"auto",padding:"10px 18px",fontSize:14}}
-              onClick={()=>setMostrarModal(true)}>
-              + Asignar tarea
-            </button>
+            <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setVista("crear_tarea");}}>+ Nueva tarea</button>
           </div>
-
           {misTareas.length===0?(
-            <div style={{textAlign:"center",padding:"48px 20px"}}>
-              <p style={{fontSize:52,margin:"0 0 12px"}}>📋</p>
-              <p style={{color:C.textoS,fontSize:15,margin:"0 0 6px"}}>No tienes tareas creadas aún.</p>
-              <p style={{color:"#374151",fontSize:13,margin:"0 0 20px"}}>Usa el botón <strong style={{color:C.verdeC}}>"+ Asignar tarea"</strong> para comenzar.</p>
-              <button style={{...S.btnVerde,width:"auto",padding:"11px 24px"}} onClick={()=>setMostrarModal(true)}>+ Asignar primera tarea</button>
+            <div style={{textAlign:"center",padding:"36px 20px"}}>
+              <p style={{fontSize:44,margin:"0 0 12px"}}>📋</p>
+              <p style={{color:C.textoS,fontSize:14}}>No tienes tareas creadas aún.</p>
+              <button style={{...S.btnVerde,width:"auto",padding:"10px 20px",marginTop:14}} onClick={()=>setVista("crear_tarea")}>Crear primera tarea</button>
             </div>
           ):(
             misTareas.map(t=>(
@@ -928,17 +882,16 @@ export default function App() {
                       <p style={{color:C.azulC,fontWeight:"bold",margin:0,fontSize:14}}>{t.titulo}</p>
                       <span style={{background:C.morado,color:"#fff",fontSize:10,padding:"2px 8px",borderRadius:20}}>{TIPOS_ACTIVIDAD.find(x=>x.id===t.tipo)?.label||t.tipo}</span>
                     </div>
-                    <p style={{color:C.textoS,fontSize:12,margin:"0 0 6px"}}>{t.area} · Grado {t.grado} · Código: <span style={{color:C.naranja,fontWeight:"bold"}}>{t.codigo}</span></p>
+                    <p style={{color:C.textoS,fontSize:12,margin:"0 0 5px"}}>{t.area} · Grado {t.grado} · Código: <span style={{color:C.naranja,fontWeight:"bold"}}>{t.codigo}</span></p>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      <span style={{...S.badge(C.azul),fontSize:11,padding:"3px 9px"}}>👥 {t.totalEstudiantes} asignados</span>
-                      <span style={{...S.badge(t.totalEntregas>0?C.verde:"#374151"),fontSize:11,padding:"3px 9px"}}>✅ {t.totalEntregas} entregaron</span>
-                      <span style={{...S.badge(t.pendientes>0?C.err:"#374151"),fontSize:11,padding:"3px 9px"}}>⏳ {t.pendientes} pendientes</span>
+                      <span style={{...S.badge(C.azul),fontSize:11,padding:"3px 9px"}}>👥 {t.totalEstudiantes}</span>
+                      <span style={{...S.badge(t.totalEntregas>0?C.verde:C.textoS),fontSize:11,padding:"3px 9px"}}>📤 {t.totalEntregas} entregas</span>
                       {t.fechaEntrega&&<span style={{...S.badge(C.naranja),fontSize:11,padding:"3px 9px"}}>📅 {t.fechaEntrega}</span>}
                     </div>
                   </div>
-                  <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"center"}}>
-                    <button style={{...S.btnSm,color:C.azulC,borderColor:C.azul}} onClick={()=>verEntregas(t)}>📊 Ver entregas</button>
-                    <button style={{...S.btnSm,color:C.ok,borderColor:C.verde}} onClick={()=>{navigator.clipboard.writeText(`https://educlass-frontend.vercel.app?codigo=${t.codigo}`);alert("Link copiado ✅");}}>🔗 Compartir</button>
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button style={{...S.btnSm,color:C.azulC,borderColor:C.azul}} onClick={()=>verEntregas(t)}>📊 Entregas</button>
+                    <button style={{...S.btnSm,color:C.ok,borderColor:C.verde}} onClick={()=>{navigator.clipboard.writeText(`https://educlass-frontend.vercel.app?codigo=${t.codigo}`);alert("Link copiado ✅");}}>🔗 Link</button>
                     <button style={{...S.btnSm,color:C.err,borderColor:C.rojo}} onClick={()=>eliminarTarea(t.id)}>🗑</button>
                   </div>
                 </div>
@@ -951,156 +904,358 @@ export default function App() {
   );
 
   // ══════════════════════════════════════════════════════
-  //  VER ENTREGAS — Panel docente
+  //  CREAR TAREA
   // ══════════════════════════════════════════════════════
-  if(vista==="ver_entregas"&&tareaActiva) return(
+  if(vista==="crear_tarea") return(
     <div style={S.fondo}><Header/>
-    <div style={S.contenedor}>
-      <button style={{...S.btnSm,marginBottom:16}} onClick={()=>setVista("tareas")}>← Tareas</button>
-      <div style={S.bloque}>
-        <h2 style={S.tBloque}>📊 {tareaActiva.titulo}</h2>
+      <div style={S.contenedor}>
+        {!tareaCreada?(
+          <div style={S.bloque}>
+            <button style={{...S.btnSm,marginBottom:16}} onClick={()=>setVista("tareas")}>← Volver</button>
+            <h2 style={S.tBloque}>+ Nueva tarea para estudiantes</h2>
 
-        {/* Resumen estadístico */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
-          {[
-            { label:"Total", valor:resumenEntregas.total||0, color:C.azulC },
-            { label:"Entregaron", valor:resumenEntregas.entregados||0, color:C.ok },
-            { label:"Pendientes", valor:resumenEntregas.pendientes||0, color:C.err },
-            { label:"Calificados", valor:resumenEntregas.calificados||0, color:C.naranja },
-          ].map(s=>(
-            <div key={s.label} style={{background:"#0a1128",border:`1px solid ${C.borde}`,borderRadius:10,padding:"12px 16px",textAlign:"center"}}>
-              <p style={{color:s.color,fontSize:26,fontWeight:"bold",margin:"0 0 4px",fontFamily:FT}}>{s.valor}</p>
-              <p style={{color:C.textoS,fontSize:11,margin:0}}>{s.label}</p>
+            {/* Tipo de actividad */}
+            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>1. Tipo de actividad</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8,marginBottom:18}}>
+              {TIPOS_ACTIVIDAD.map(t=>(
+                <div key={t.id} style={S.opcion(ntTipo===t.id)} onClick={()=>setNtTipo(t.id)}>
+                  <p style={S.oLbl}>{t.label}</p>
+                  <p style={S.oDesc}>{t.desc}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Filtros */}
-        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-          {[["todos","Todos"],["pendiente","⏳ Pendientes"],["entregado","✅ Entregados"],["calificado","⭐ Calificados"]].map(([val,lbl])=>(
-            <button key={val} style={{...S.btnSm,color:filtroEstado===val?C.azulC:C.textoS,borderColor:filtroEstado===val?C.azul:C.borde,background:filtroEstado===val?"#0f2a47":"transparent"}}
-              onClick={()=>setFiltroEstado(val)}>{lbl}</button>
-          ))}
-        </div>
-
-        {/* Panel calificar */}
-        {calEntregaId&&(
-          <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:16,marginBottom:18}}>
-            <h3 style={{color:C.azulC,margin:"0 0 12px",fontFamily:FT}}>✏️ Calificar entrega</h3>
-            <div style={S.fila}>
-              <div style={{flex:1}}>
-                <p style={S.label}>Nota (0.0 a 5.0) *</p>
-                <input style={S.input} type="number" min="0" max="5" step="0.1" placeholder="Ej: 4.5" value={calNota} onChange={e=>setCalNota(e.target.value)}/>
-              </div>
-              <div style={{flex:2}}>
-                <p style={S.label}>Comentario al estudiante</p>
-                <input style={S.input} placeholder="Retroalimentación breve..." value={calComentario} onChange={e=>setCalComentario(e.target.value)}/>
-              </div>
+            {/* Datos básicos */}
+            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>2. Información de la tarea</p>
+            <div style={{marginBottom:12}}><p style={S.label}>Título *</p><input style={S.input} placeholder="Ej: Quiz sobre el verbo to be" value={ntTitulo} onChange={e=>setNtTitulo(e.target.value)}/></div>
+            <div style={{marginBottom:12}}><p style={S.label}>Instrucciones para el estudiante</p><textarea style={S.textarea} placeholder="Escribe las instrucciones detalladas..." value={ntDesc} onChange={e=>setNtDesc(e.target.value)}/></div>
+            <div style={{...S.fila,marginBottom:16}}>
+              <div style={{flex:1}}><p style={S.label}>Área</p><select style={S.select} value={ntArea} onChange={e=>setNtArea(e.target.value)}><option value="">Seleccionar</option>{["Ciencias Naturales","Ciencias Sociales","Matemáticas","Lengua Castellana","Inglés","Educación Física","Artística","Ética","Tecnología","Filosofía","Química","Física","Biología"].map(m=><option key={m}>{m}</option>)}</select></div>
+              <div style={{flex:1}}><p style={S.label}>Grado</p><select style={S.select} value={ntGrado} onChange={e=>setNtGrado(e.target.value)}><option value="">Seleccionar</option>{["Transición","1°","2°","3°","4°","5°","6°","7°","8°","9°","10°","11°"].map(g=><option key={g}>{g}</option>)}</select></div>
+              <div style={{flex:1}}><p style={S.label}>Fecha de entrega</p><input type="date" style={S.input} value={ntFecha} onChange={e=>setNtFecha(e.target.value)}/></div>
             </div>
-            <div style={{...S.fila,marginTop:12}}>
-              <button style={{...S.btnVerde,width:"auto",padding:"9px 20px"}} onClick={calificar}>💾 Guardar nota</button>
-              <button style={{...S.btnGris,width:"auto"}} onClick={()=>{setCalEntregaId(null);setCalNota("");setCalComentario("");}}>Cancelar</button>
-            </div>
-          </div>
-        )}
 
-        {/* Tabla completa */}
-        {listadoEntregas.length===0 ? (
-          <p style={{color:C.textoS,textAlign:"center",padding:24}}>No hay estudiantes asignados a esta tarea.</p>
-        ) : (
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-              <thead>
-                <tr style={{background:"#0a1128"}}>
-                  {["Estado","Estudiante","Grado","Fecha entrega","Resumen","Nota","Acciones"].map(h=>(
-                    <th key={h} style={{padding:"10px 12px",textAlign:"left",color:C.azulC,borderBottom:`1px solid ${C.borde}`,fontWeight:"bold",whiteSpace:"nowrap"}}>{h}</th>
+            {/* Generar actividad con IA */}
+            <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:16,marginBottom:18}}>
+              <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 8px",fontSize:14}}>🤖 Generar actividad con IA</p>
+              <p style={{color:C.textoS,fontSize:13,margin:"0 0 10px"}}>
+                La IA genera las preguntas automáticamente según el título, área y grado que escribiste arriba.
+              </p>
+              {(!ntTitulo||!ntArea||!ntGrado)&&(
+                <p style={{color:C.naranja,fontSize:12,margin:"0 0 10px"}}>
+                  ⚠️ Necesitas: {!ntTitulo?"título ":""}{!ntArea?"área ":""}{!ntGrado?"grado":""}
+                </p>
+              )}
+              <button style={{...S.btnAzul,opacity:(generandoAct||!ntTitulo||!ntArea||!ntGrado)?0.6:1}}
+                disabled={generandoAct||!ntTitulo||!ntArea||!ntGrado}
+                onClick={generarActividad}>
+                {generandoAct?"⏳ Generando preguntas...":"✨ Generar actividad con IA"}
+              </button>
+              {ntActividad&&(
+                <div style={{marginTop:12,background:"#0a1128",borderRadius:8,padding:12}}>
+                  <p style={{color:C.ok,fontWeight:"bold",margin:"0 0 8px",fontSize:13}}>✅ Actividad generada — Vista previa:</p>
+                  {(ntActividad.preguntas||ntActividad.pares||[]).slice(0,3).map((p,i)=>(
+                    <p key={i} style={{color:C.textoS,fontSize:12,margin:"0 0 4px"}}>
+                      {i+1}. {p.pregunta||p.enunciado||p.afirmacion||p.columnaA}
+                    </p>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {listadoEntregas
-                  .filter(e => filtroEstado==="todos" || e.estado===filtroEstado)
-                  .map((e,i)=>(
-                  <tr key={e.estudianteId} style={{background:i%2===0?"#0a1128":"#0d1528",borderBottom:`1px solid ${C.borde}`}}>
-                    {/* Estado */}
-                    <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
-                      {e.estado==="calificado" && <span style={{color:C.naranja,fontWeight:"bold",fontSize:11}}>⭐ Calificado</span>}
-                      {e.estado==="entregado"  && <span style={{color:C.ok,fontWeight:"bold",fontSize:11}}>✅ Entregado</span>}
-                      {e.estado==="pendiente"  && <span style={{color:C.err,fontWeight:"bold",fontSize:11}}>⏳ Pendiente</span>}
-                    </td>
-                    {/* Nombre */}
-                    <td style={{padding:"10px 12px"}}>
-                      <p style={{color:C.texto,margin:0,fontWeight:"bold"}}>{e.nombreEstudiante}</p>
-                    </td>
-                    {/* Grado */}
-                    <td style={{padding:"10px 12px",color:C.textoS,fontSize:12}}>{e.grado||"—"}</td>
-                    {/* Fecha */}
-                    <td style={{padding:"10px 12px",color:C.textoS,fontSize:11,whiteSpace:"nowrap"}}>
-                      {e.entregadoEn ? new Date(e.entregadoEn).toLocaleString("es-CO",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—"}
-                    </td>
-                    {/* Resumen respuesta — no el detalle completo */}
-                    <td style={{padding:"10px 12px",maxWidth:180}}>
-                      {e.resumenRespuesta&&<p style={{color:"#94a3b8",fontSize:11,margin:0,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:170}}>"{e.resumenRespuesta}{e.resumenRespuesta.length>=120?"...":""}"</p>}
-                      {e.tieneArchivo&&<p style={{color:C.azulC,fontSize:11,margin:"2px 0 0"}}>📎 {e.archivoNombre}</p>}
-                      {e.porcentajeAuto!=null&&<p style={{color:C.textoS,fontSize:11,margin:"2px 0 0"}}>📊 Auto: {e.porcentajeAuto}%</p>}
-                      {!e.entregada&&<span style={{color:"#374151",fontSize:11}}>Sin entregar</span>}
-                    </td>
-                    {/* Nota */}
-                    <td style={{padding:"10px 12px",whiteSpace:"nowrap",textAlign:"center"}}>
-                      {e.calificacion!=null ? (
-                        <span style={{color:C.naranja,fontWeight:"bold",fontSize:18,fontFamily:FT}}>{e.calificacion}</span>
-                      ) : (
-                        <span style={{color:"#374151",fontSize:12}}>—</span>
-                      )}
-                    </td>
-                    {/* Acciones */}
-                    <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>
-                      <div style={{display:"flex",gap:5}}>
-                        {e.tieneArchivo&&(
-                          <a href={`${API}/descargar-entrega/${tareaActiva.id}/${e.estudianteId}`}
-                            style={{...S.btnSm,color:C.azulC,borderColor:C.azul,textDecoration:"none",padding:"5px 8px",borderRadius:7,fontSize:11}}>⬇️</a>
-                        )}
-                        {e.entregada&&(
-                          <button style={{...S.btnSm,color:C.naranja,borderColor:C.naranja,fontSize:11}}
-                            onClick={()=>{ setCalEntregaId(e.entregaId); setCalNota(e.calificacion||""); setCalComentario(e.comentarioDocente||""); }}>
-                            {e.calificacion!=null?"✏️ Editar":"📝 Calificar"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                  {(ntActividad.preguntas||ntActividad.pares||[]).length>3&&<p style={{color:C.textoS,fontSize:12,margin:0}}>... y {(ntActividad.preguntas||ntActividad.pares||[]).length-3} más</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Lista estudiantes */}
+            <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>3. Lista de estudiantes (uno por línea)</p>
+            <p style={{color:C.textoS,fontSize:12,margin:"0 0 8px"}}>El sistema genera usuario y contraseña para cada uno. Comparte el <strong>código de acceso</strong> con los estudiantes.</p>
+            <textarea style={{...S.textarea,minHeight:160}}
+              placeholder={"Juan Pérez\nMaría García\nCarlos López\nAna Martínez\n..."}
+              value={ntEstudiantes}
+              onChange={e=>setNtEstudiantes(e.target.value)}/>
+            <p style={{color:C.textoS,fontSize:12,margin:"6px 0 16px"}}>{ntEstudiantes.split("\n").filter(s=>s.trim()).length} estudiantes ingresados</p>
+
+            <button style={{...S.btnVerde,opacity:creandoTarea?0.7:1}} disabled={creandoTarea} onClick={crearTarea}>
+              {creandoTarea?"⏳ Creando...":"✅ Crear tarea y generar credenciales"}
+            </button>
+          </div>
+        ):(
+          <div style={S.bloque}>
+            <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:12,padding:18,marginBottom:18}}>
+              <p style={{color:C.ok,fontWeight:"bold",fontSize:17,margin:"0 0 8px"}}>✅ Tarea creada exitosamente</p>
+              <p style={{color:C.texto,margin:"0 0 4px"}}><strong>Título:</strong> {tareaCreada.tarea?.titulo}</p>
+              <p style={{color:C.texto,margin:"0 0 4px"}}><strong>Tipo:</strong> {TIPOS_ACTIVIDAD.find(x=>x.id===tareaCreada.tarea?.tipo)?.label}</p>
+              <p style={{color:C.texto,margin:"0 0 4px"}}><strong>Código:</strong> <span style={{color:C.naranja,fontSize:22,fontWeight:"bold"}}>{tareaCreada.tarea?.codigo}</span></p>
+              <p style={{color:C.texto,margin:"0 0 12px"}}><strong>Link:</strong> <span style={{color:C.azulC,fontSize:12}}>https://educlass-frontend.vercel.app?codigo={tareaCreada.tarea?.codigo}</span></p>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{navigator.clipboard.writeText(`https://educlass-frontend.vercel.app?codigo=${tareaCreada.tarea?.codigo}`);alert("Link copiado ✅");}}>🔗 Copiar link</button>
+                <button style={{...S.btnNaranja,width:"auto",padding:"9px 16px"}} onClick={()=>{const txt=tareaCreada.estudiantes?.map(e=>`${e.nombre} | Usuario: ${e.usuario} | Contraseña: ${e.password}`).join("\n");navigator.clipboard.writeText(`TAREA: ${tareaCreada.tarea?.titulo}\nCódigo: ${tareaCreada.tarea?.codigo}\n\n${txt}`);alert("Credenciales copiadas ✅");}}>📋 Copiar credenciales</button>
+              </div>
+            </div>
+
+            <h3 style={{color:C.azulC,margin:"0 0 12px",fontFamily:F_TITULO}}>Credenciales de estudiantes</h3>
+            <p style={{color:C.textoS,fontSize:12,margin:"0 0 12px"}}>💡 Los estudiantes también pueden registrar su propia cuenta en el portal y unirse con el código.</p>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead><tr style={{background:"#0a1128"}}>{["Nombre","Usuario","Contraseña"].map(h=><th key={h} style={{padding:"9px 12px",textAlign:"left",color:C.azulC,borderBottom:`1px solid ${C.borde}`}}>{h}</th>)}</tr></thead>
+                <tbody>{tareaCreada.estudiantes?.map((e,i)=>(
+                  <tr key={i} style={{background:i%2===0?"#0a1128":"#0d1528"}}>
+                    <td style={{padding:"8px 12px",color:C.texto,borderBottom:`1px solid ${C.borde}`}}>{e.nombre}</td>
+                    <td style={{padding:"8px 12px",color:C.naranja,borderBottom:`1px solid ${C.borde}`,fontFamily:"monospace"}}>{e.usuario}</td>
+                    <td style={{padding:"8px 12px",color:C.ok,borderBottom:`1px solid ${C.borde}`,fontFamily:"monospace"}}>{e.password}</td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                ))}</tbody>
+              </table>
+            </div>
+            <div style={{...S.fila,marginTop:16}}>
+              <button style={S.btnVerde} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setVista("tareas");}}>Ir a mis tareas</button>
+              <button style={S.btnGris} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);}}>+ Crear otra</button>
+            </div>
           </div>
         )}
       </div>
     </div>
+  );
+
+  // ══════════════════════════════════════════════════════
+  //  VER ENTREGAS
+  // ══════════════════════════════════════════════════════
+  if(vista==="ver_entregas"&&tareaActiva) return(
+    <div style={S.fondo}><Header/>
+      <div style={S.contenedor}>
+        <button style={{...S.btnSm,marginBottom:14}} onClick={()=>setVista("tareas")}>← Tareas</button>
+        <div style={S.bloque}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:14}}>
+            <div>
+              <h2 style={{...S.tBloque,margin:"0 0 4px"}}>{tareaActiva.titulo}</h2>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <span style={S.chip}>{TIPOS_ACTIVIDAD.find(x=>x.id===tareaActiva.tipo)?.label}</span>
+                <span style={S.chip}>📚 {tareaActiva.area} · Grado {tareaActiva.grado}</span>
+                {tareaActiva.fechaEntrega&&<span style={{...S.chip,borderColor:C.naranja,color:C.naranja}}>📅 {tareaActiva.fechaEntrega}</span>}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:10,padding:"8px 14px",textAlign:"center"}}>
+                <p style={{color:C.ok,fontSize:20,fontWeight:"bold",margin:0}}>{entregas.length}</p>
+                <p style={{color:C.textoS,fontSize:10,margin:0}}>Entregaron</p>
+              </div>
+              <div style={{background:"#2d0a0a",border:`1px solid ${C.rojo}`,borderRadius:10,padding:"8px 14px",textAlign:"center"}}>
+                <p style={{color:C.err,fontSize:20,fontWeight:"bold",margin:0}}>{sinEntregar.length}</p>
+                <p style={{color:C.textoS,fontSize:10,margin:0}}>Pendientes</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter tabs */}
+          <div style={{display:"flex",gap:6,marginBottom:16,borderBottom:`1px solid ${C.borde}`,paddingBottom:10}}>
+            {[["todos","📋 Todos"+(listadoCompleto.length>0?` (${listadoCompleto.length})`:"")],["entregaron","✅ Entregaron"+(entregas.length>0?` (${entregas.length})`:"")],["pendientes","⏳ Pendientes"+(sinEntregar.length>0?` (${sinEntregar.length})`:"")]].map(([id,lbl])=>(
+              <button key={id} style={{...S.btnSm,color:filtroEntregas===id?C.azulC:C.textoS,borderColor:filtroEntregas===id?C.azul:C.borde,background:filtroEntregas===id?"#0f2a47":"transparent"}} onClick={()=>setFiltroEntregas(id)}>{lbl}</button>
+            ))}
+          </div>
+
+          {/* Panel calificar */}
+          {calEntregaId&&(
+            <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:16,marginBottom:16}}>
+              <h3 style={{color:C.azulC,margin:"0 0 12px",fontSize:14}}>✏️ Calificar entrega</h3>
+              <div style={S.fila}>
+                <div style={{flex:1}}><p style={S.label}>Calificación (escala 0-5)</p><input style={S.input} placeholder="Ej: 4.5" value={calNota} onChange={e=>setCalNota(e.target.value)}/></div>
+              </div>
+              <div style={{marginTop:10}}><p style={S.label}>Comentario / corrección para el estudiante</p><textarea style={S.textarea} placeholder="Escribe observaciones o retroalimentación..." value={calComentario} onChange={e=>setCalComentario(e.target.value)}/></div>
+              <div style={{...S.fila,marginTop:12}}>
+                <button style={{...S.btnVerde,width:"auto",padding:"9px 18px"}} onClick={calificar}>💾 Guardar nota</button>
+                <button style={{...S.btnGris,width:"auto"}} onClick={()=>{setCalEntregaId(null);setCalNota("");setCalComentario("");}}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {/* Full student list */}
+          {(filtroEntregas==="todos"?listadoCompleto:filtroEntregas==="entregaron"?entregas:sinEntregar).map((est,i)=>{
+            const entregada = est.entregada!==undefined?est.entregada:est.estado!=="pendiente";
+            const entregaId = est.entregaId||est.id;
+            return(
+              <div key={i} style={{background:entregada?"#0a1128":"#130a0a",border:`1px solid ${entregada?C.borde:C.rojo+"44"}`,borderRadius:10,padding:"12px 14px",marginBottom:7}}>
+                <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontSize:14}}>{entregada?"✅":"⏳"}</span>
+                      <p style={{color:entregada?C.texto:C.textoS,fontWeight:"bold",margin:0,fontSize:14}}>{est.nombreEstudiante}</p>
+                      {est.grado&&<span style={{...S.badge(C.azul),fontSize:10}}>Grado {est.grado}°</span>}
+                      {est.autoCalificada&&<span style={{...S.badge(C.verde),fontSize:10}}>Auto ✓</span>}
+                    </div>
+                    {entregada&&est.entregadoEn&&<p style={{color:C.textoS,fontSize:11,margin:"0 0 4px"}}>Entregado: {new Date(est.entregadoEn).toLocaleString("es-CO")}</p>}
+                    {entregada&&est.respuesta&&<p style={{color:"#CBD5E1",fontSize:12,margin:"0 0 4px",fontStyle:"italic",background:"#0d1528",padding:"5px 10px",borderRadius:6}}>"{est.respuesta.substring(0,120)}{est.respuesta.length>120?"...":""}"</p>}
+                    {entregada&&est.resultadoDetalle&&(
+                      <div style={{marginTop:4}}>
+                        <p style={{color:C.textoS,fontSize:11,margin:"0 0 3px"}}>📊 {est.resultadoDetalle.correctas}/{est.resultadoDetalle.total} correctas — {est.resultadoDetalle.porcentaje}% — Nota auto: <strong style={{color:C.ok}}>{est.resultadoDetalle.nota}</strong></p>
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                          {est.resultadoDetalle.detalle?.map((d,di)=>(
+                            <span key={di} style={{background:d.esCorrecta?"#052e16":"#2d0a0a",border:`1px solid ${d.esCorrecta?C.ok:C.err}`,color:d.esCorrecta?C.ok:C.err,fontSize:10,padding:"1px 7px",borderRadius:20}}>P{di+1} {d.esCorrecta?"✓":"✗"}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {entregada&&est.archivoNombre&&<p style={{color:C.azulC,fontSize:11,margin:"3px 0 0"}}>📎 {est.archivoNombre}</p>}
+                    {est.calificacion!=null&&<p style={{color:C.naranja,fontWeight:"bold",fontSize:13,margin:"4px 0 0"}}>Nota: {est.calificacion}{est.comentario&&<span style={{color:C.textoS,fontWeight:"normal",fontSize:12}}> — {est.comentario}</span>}</p>}
+                    {!entregada&&<p style={{color:C.textoS,fontSize:12,margin:"3px 0 0",fontStyle:"italic"}}>Sin entregar</p>}
+                  </div>
+                  {entregada&&(
+                    <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
+                      {est.archivoNombre&&<a href={`${API}/descargar-entrega/${tareaActiva.id}/${est.estudianteId}`} style={{...S.btnSm,color:C.azulC,borderColor:C.azul,textDecoration:"none",padding:"5px 10px",borderRadius:7,fontSize:11}}>⬇️</a>}
+                      <button style={{...S.btnSm,color:est.calificacion!=null?C.textoS:C.naranja,borderColor:est.calificacion!=null?C.borde:C.naranja}}
+                        onClick={()=>{setCalEntregaId(entregaId);setCalNota(est.calificacion||"");setCalComentario(est.comentario||"");}}>
+                        {est.calificacion!=null?"✏️ Editar nota":"📝 Calificar"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {listadoCompleto.length===0&&<p style={{color:C.textoS,textAlign:"center",padding:30,fontSize:14}}>Aún no hay estudiantes asignados a esta tarea.</p>}
+        </div>
+      </div>
     </div>
   );
 
-  // ── Perfil ──────────────────────────────────────────────
-  if(vista==="perfil") return(<div style={S.fondo}><Header/><div style={S.contenedor}><div style={S.bloque}><button style={{...S.btnSm,marginBottom:16}} onClick={()=>setVista("dashboard")}>← Volver</button><h2 style={S.tBloque}>⚙️ Mi perfil institucional</h2><div style={{display:"flex",gap:36,justifyContent:"center",marginBottom:22}}><SubirImagen label="🏫 Escudo" preview={logoPreview} inputRef={logoRef} onChange={e=>{const f=e.target.files[0];if(f){setLogoFile(f);setLogoPreview(URL.createObjectURL(f));}}}/><SubirImagen label="🚩 Bandera" preview={banderaPreview} inputRef={banderaRef} onChange={e=>{const f=e.target.files[0];if(f){setBanderaFile(f);setBanderaPreview(URL.createObjectURL(f));}}}/></div><div style={S.sep}/><div style={{...S.fila,marginBottom:12}}><div style={{flex:2}}><p style={S.label}>Institución</p><input style={S.input} value={institucion} onChange={e=>setInstitucion(e.target.value)}/></div><div style={{flex:1}}><p style={S.label}>Cargo</p><select style={S.select} value={usuario?.cargo||"Docente"} onChange={e=>setUsuario({...usuario,cargo:e.target.value})}>{["Docente","Coordinador/a","Rector/a","Orientador/a"].map(c=><option key={c}>{c}</option>)}</select></div></div><div style={{...S.fila,marginBottom:20}}><div style={{flex:1}}><p style={S.label}>Ciudad</p><input style={S.input} value={usuario?.ciudad||""} onChange={e=>setUsuario({...usuario,ciudad:e.target.value})}/></div></div><button style={{...S.btnVerde,width:"auto",padding:"11px 24px"}} onClick={subirPerfil}>💾 Guardar perfil y logos</button></div></div></div>);
+  // ── Perfil, Historial, Ver clase, Creador ─────────────
+  if(vista==="perfil") return(
+    <div style={S.fondo}><Header/>
+      <div style={S.contenedor}>
+        <div style={S.bloque}>
+          <button style={{...S.btnSm,marginBottom:16}} onClick={()=>setVista("dashboard")}>← Volver</button>
+          <h2 style={S.tBloque}>⚙️ Mi perfil institucional</h2>
+          <div style={{display:"flex",gap:36,justifyContent:"center",marginBottom:22}}>
+            <SubirImagen label="🏫 Escudo" preview={logoPreview} inputRef={logoRef} onChange={e=>{const f=e.target.files[0];if(f){setLogoFile(f);setLogoPreview(URL.createObjectURL(f));}}}/>
+            <SubirImagen label="🚩 Bandera" preview={banderaPreview} inputRef={banderaRef} onChange={e=>{const f=e.target.files[0];if(f){setBanderaFile(f);setBanderaPreview(URL.createObjectURL(f));}}}/>
+          </div>
+          <div style={S.sep}/>
+          <div style={{...S.fila,marginBottom:12}}>
+            <div style={{flex:2}}><p style={S.label}>Institución</p><input style={S.input} value={institucion} onChange={e=>setInstitucion(e.target.value)}/></div>
+            <div style={{flex:1}}><p style={S.label}>Cargo</p><select style={S.select} value={usuario?.cargo||"Docente"} onChange={e=>setUsuario({...usuario,cargo:e.target.value})}>{["Docente","Coordinador/a","Rector/a","Orientador/a"].map(c=><option key={c}>{c}</option>)}</select></div>
+          </div>
+          <div style={{...S.fila,marginBottom:20}}>
+            <div style={{flex:1}}><p style={S.label}>Ciudad</p><input style={S.input} value={usuario?.ciudad||""} onChange={e=>setUsuario({...usuario,ciudad:e.target.value})}/></div>
+            <div style={{flex:1}}><p style={S.label}>Municipio</p><input style={S.input} value={usuario?.municipio||""} onChange={e=>setUsuario({...usuario,municipio:e.target.value})}/></div>
+          </div>
+          <button style={{...S.btnVerde,width:"auto",padding:"11px 24px"}} onClick={subirPerfil}>💾 Guardar perfil y logos</button>
+        </div>
+      </div>
+    </div>
+  );
 
-  // ── Historial ───────────────────────────────────────────
-  if(vista==="historial") return(<div style={S.fondo}><Header/><div style={S.contenedor}><div style={S.bloque}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}><h2 style={S.tBloque}>📂 Mis clases guardadas</h2><button style={{...S.btnVerde,width:"auto",padding:"9px 16px"}} onClick={()=>{reset();setVista("ia");}}>+ Nueva</button></div>{misClases.length===0?<p style={{color:C.textoS,textAlign:"center",padding:28}}>Sin clases guardadas.</p>:misClases.map(c=>(<TarjetaClase key={c.id} clase={c} onVer={async cl=>{const r=await fetch(`${API}/clase/${cl.id}`);const d=await r.json();setClaseActiva(d.clase);setVista("verClase");}} onEliminar={eliminarClase}/>))}</div></div></div>);
+  if(vista==="historial") return(
+    <div style={S.fondo}><Header/>
+      <div style={S.contenedor}>
+        <div style={S.bloque}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+            <h2 style={S.tBloque}>📂 Mis clases guardadas</h2>
+            <button style={{...S.btnVerde,width:"auto",padding:"9px 16px"}} onClick={()=>{reset();setVista("ia");}}>+ Nueva</button>
+          </div>
+          {misClases.length===0?<p style={{color:C.textoS,textAlign:"center",padding:28}}>Aún no tienes clases guardadas.</p>
+            :misClases.map(c=>(<TarjetaClase key={c.id} clase={c} onVer={async(clase)=>{const r=await fetch(`${API}/clase/${clase.id}`);const d=await r.json();setClaseActiva(d.clase);setVista("verClase");}} onEliminar={eliminarClase}/>))}
+        </div>
+      </div>
+    </div>
+  );
 
-  if(vista==="verClase"&&claseActiva) return(<div style={S.fondo}><Header/><div style={S.contenedor}><button style={{...S.btnSm,marginBottom:14}} onClick={()=>setVista("historial")}>← Volver</button><div style={S.resultado}><h2 style={{color:C.azulC,fontSize:19,marginBottom:4,marginTop:0,fontFamily:FT}}>{claseActiva.datos?.tema}</h2><p style={{color:C.textoS,fontSize:13,marginBottom:18}}>{claseActiva.datos?.area} · Grado {claseActiva.datos?.grado}</p><div style={S.sep}/><pre style={S.pre}>{claseActiva.contenido}</pre></div></div></div>);
+  if(vista==="verClase"&&claseActiva) return(
+    <div style={S.fondo}><Header/>
+      <div style={S.contenedor}>
+        <button style={{...S.btnSm,marginBottom:14}} onClick={()=>setVista("historial")}>← Volver</button>
+        <div style={S.resultado}>
+          <h2 style={{color:C.azulC,fontSize:19,marginBottom:4,marginTop:0,fontFamily:F_TITULO}}>{claseActiva.datos?.tema}</h2>
+          <p style={{color:C.textoS,fontSize:13,marginBottom:18}}>{claseActiva.datos?.area} · Grado {claseActiva.datos?.grado}</p>
+          <div style={S.sep}/><pre style={S.pre}>{claseActiva.contenido}</pre>
+        </div>
+      </div>
+    </div>
+  );
 
-  // ── Creador de guías (wizard) ───────────────────────────
+  // ── Creador paso a paso ───────────────────────────────
   const PASOS=["Nivel","Datos","Apertura","Desarrollo","Retroalim.","Cierre","Resultado"];
   return(
     <div style={S.fondo}><Header/>
-    <div style={S.contenedor}>
-      {paso<7&&(<div style={S.pasos}>{PASOS.map((p,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:4}}><div style={S.pasoBola(paso===i+1,paso>i+1)}>{paso>i+1?"✓":i+1}</div><span style={{color:paso===i+1?C.azulC:"#4a5a70",fontSize:11}}>{p}</span>{i<PASOS.length-1&&<span style={{color:C.borde,margin:"0 2px",fontSize:13}}>›</span>}</div>))}</div>)}
-      {paso===1&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setVista("dashboard")}>← Inicio</button><h2 style={S.tBloque}>🎓 ¿Para qué nivel es la clase?</h2><div style={S.grid2}>{[{id:"preescolar",label:"🌱 Preescolar",desc:"Transición"},{id:"primaria",label:"🏫 Primaria",desc:"Grados 1° a 5°"},{id:"bachillerato",label:"📚 Bachillerato",desc:"Grados 6° a 11°"},{id:"media_tecnica",label:"🔧 Media Técnica",desc:"Grados 10° y 11°"}].map(n=>(<div key={n.id} style={S.opcion(nivelEdu===n.id)} onClick={()=>setNivelEdu(n.id)}><p style={S.oLbl}>{n.label}</p><p style={S.oDesc}>{n.desc}</p></div>))}</div><button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!nivelEdu){alert("Selecciona el nivel");return;}setPaso(2);}}>Continuar →</button></div>)}
-      {paso===2&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(1)}>← Volver</button><h2 style={S.tBloque}>📋 Información de la clase</h2><div style={{...S.fila,marginBottom:10}}><div style={{flex:2}}><p style={S.label}>Institución</p><input style={S.input} value={institucion} onChange={e=>setInstitucion(e.target.value)}/></div></div><div style={{...S.fila,marginBottom:10}}><div style={{flex:2}}><p style={S.label}>Docente</p><input style={S.input} value={docente} onChange={e=>setDocente(e.target.value)}/></div><div style={{flex:1}}><p style={S.label}>Periodo</p><select style={S.select} value={periodo} onChange={e=>setPeriodo(e.target.value)}>{["1","2","3","4"].map(p=><option key={p}>Periodo {p}</option>)}</select></div></div><div style={{...S.fila,marginBottom:10}}><div style={{flex:1}}><p style={S.label}>Área</p><select style={S.select} value={area} onChange={e=>setArea(e.target.value)}><option value="">Seleccionar</option>{["Ciencias Naturales","Ciencias Sociales","Matemáticas","Lengua Castellana","Inglés","Educación Física","Artística","Ética y Valores","Tecnología e Informática","Filosofía","Química","Física","Biología"].map(m=><option key={m}>{m}</option>)}</select></div><div style={{flex:1}}><p style={S.label}>Grado</p><select style={S.select} value={grado} onChange={e=>setGrado(e.target.value)}><option value="">Seleccionar</option>{(nivelEdu==="preescolar"?["Transición"]:nivelEdu==="primaria"?["1°","2°","3°","4°","5°"]:nivelEdu==="media_tecnica"?["10°","11°"]:["6°","7°","8°","9°","10°","11°"]).map(g=><option key={g}>{g}</option>)}</select></div></div><div style={{...S.fila,marginBottom:10}}><div style={{flex:2}}><p style={S.label}>Tema</p><input style={S.input} placeholder="Ej: El verbo to be" value={tema} onChange={e=>setTema(e.target.value)}/></div><div style={{flex:1}}><p style={S.label}>Duración</p><select style={S.select} value={duracion} onChange={e=>setDuracion(e.target.value)}>{OPT_DURACION.map(d=><option key={d.val} value={d.val}>{d.label}</option>)}</select></div></div><div style={{marginBottom:18}}><p style={S.label}>Fecha</p><input type="date" style={{...S.input,width:"auto"}} value={fecha} onChange={e=>setFecha(e.target.value)}/></div><button style={S.btnVerde} onClick={()=>{if(!area||!grado||!tema){alert("Completa área, grado y tema");return;}setPaso(3);}}>Continuar →</button></div>)}
-      {paso===3&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(2)}>← Volver</button><h2 style={S.tBloque}>🚀 ¿Cómo iniciar la clase?</h2><Opciones lista={optApertura} val={apertura} set={setApertura}/><button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!apertura){alert("Selecciona apertura");return;}setPaso(4);}}>Continuar →</button></div>)}
-      {paso===4&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(3)}>← Volver</button><h2 style={S.tBloque}>⚙️ ¿Cómo desarrollar el contenido?</h2><Opciones lista={optDesarrollo} val={desarrollo} set={setDesarrollo}/><button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!desarrollo){alert("Selecciona estrategia");return;}setPaso(5);}}>Continuar →</button></div>)}
-      {paso===5&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(4)}>← Volver</button><h2 style={S.tBloque}>🔄 ¿Cómo verificar el aprendizaje?</h2><Opciones lista={optRetro} val={retro} set={setRetro}/><button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!retro){alert("Selecciona estrategia");return;}setPaso(6);}}>Continuar →</button></div>)}
-      {paso===6&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(5)}>← Volver</button><h2 style={S.tBloque}>🏁 Cierre y tarea</h2><p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:FT}}>Estrategia de cierre</p><Opciones lista={OPT_CIERRE} val={cierre} set={setCierre}/><div style={S.sep}/><p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:FT}}>¿Dejar tarea?</p><div style={{...S.fila,marginBottom:14}}><div style={{...S.opcion(dejaTarea===true),flex:1}} onClick={()=>setDejaTarea(true)}><p style={S.oLbl}>✅ Sí</p></div><div style={{...S.opcion(dejaTarea===false),flex:1}} onClick={()=>{setDejaTarea(false);setTarea("");}}><p style={S.oLbl}>❌ No</p></div></div>{dejaTarea===true&&<Opciones lista={OPT_TAREA} val={tarea} set={setTarea}/>}<button style={{...S.btnVerde,marginTop:18,opacity:cargando?0.7:1}} disabled={cargando} onClick={()=>{if(!cierre){alert("Selecciona cierre");return;}if(dejaTarea===null){alert("Indica si hay tarea");return;}if(dejaTarea&&!tarea){alert("Selecciona estrategia de tarea");return;}generarGuia();}}>{cargando?"⏳ Generando guía...":"✨ Generar guía completa"}</button></div>)}
-      {paso===7&&(<div>{!cargando&&contenido&&!contenido.startsWith("❌")&&(<><div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}><span style={S.chip}>📚 {area}</span><span style={S.chip}>🎓 {grado}</span><span style={S.chip}>⏱️ {OPT_DURACION.find(d=>d.val===duracion)?.label}</span><span style={S.chip}>{nivelEdu==="bachillerato"?"📗 Bachillerato":nivelEdu==="preescolar"?"🌱 Preescolar":nivelEdu==="media_tecnica"?"🔧 Media":"📘 Primaria"}</span></div><div style={{...S.fila,marginBottom:18,flexWrap:"wrap",gap:7}}><button style={{...S.btnAzul,width:"auto",padding:"10px 16px"}} onClick={()=>exportar("word")} disabled={descargando}>{descargando?"⏳...":"📥 Word"}</button><button style={{...S.btnNaranja,width:"auto",padding:"10px 16px"}} onClick={()=>exportar("pdf")} disabled={descPdf}>{descPdf?"⏳...":"📄 PDF"}</button>{!guardadoOk?<button style={{...S.btnVerde,width:"auto",padding:"10px 16px",opacity:guardando?0.7:1}} onClick={guardarClase} disabled={guardando}>{guardando?"💾...":"💾 Guardar"}</button>:<span style={{...S.chip,background:"#052e16",borderColor:C.ok,color:C.ok,padding:"10px 14px"}}>✅ Guardada</span>}<button style={{...S.btnGris,width:"auto"}} onClick={()=>setVista("dashboard")}>🏠</button><button style={{...S.btnGris,width:"auto"}} onClick={reset}>+ Nueva</button></div></>)}{cargando&&(<div style={{...S.resultado,textAlign:"center",padding:52}}><p style={{fontSize:40,margin:"0 0 12px"}}>✨</p><p style={{color:C.azulC,fontSize:17,fontFamily:FT}}>Generando tu guía...</p></div>)}{!cargando&&contenido&&(<div style={S.resultado}><h2 style={{color:C.azulC,fontSize:18,marginBottom:4,marginTop:0,fontFamily:FT}}>📄 {tema}</h2><p style={{color:C.textoS,fontSize:12,marginBottom:18}}>{area} · {grado} · {OPT_DURACION.find(d=>d.val===duracion)?.label}</p><div style={S.sep}/><pre style={S.pre}>{contenido}</pre></div>)}</div>)}
-    </div>
+      <div style={S.contenedor}>
+        {paso<7&&(
+          <div style={S.pasos}>
+            {PASOS.map((p,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:4}}>
+                <div style={S.pasoBola(paso===i+1,paso>i+1)}>{paso>i+1?"✓":i+1}</div>
+                <span style={{color:paso===i+1?C.azulC:"#4a5a70",fontSize:11}}>{p}</span>
+                {i<PASOS.length-1&&<span style={{color:C.borde,margin:"0 2px",fontSize:13}}>›</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {paso===1&&(<div style={S.bloque}>
+          <button style={{...S.btnSm,marginBottom:12}} onClick={()=>setVista("dashboard")}>← Inicio</button>
+          <h2 style={S.tBloque}>🎓 ¿Para qué nivel es la clase?</h2>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {[{id:"preescolar",label:"🌱 Preescolar",desc:"Transición · Juego libre"},{id:"primaria",label:"🏫 Primaria",desc:"Grados 1° a 5°"},{id:"bachillerato",label:"📚 Bachillerato",desc:"Grados 6° a 11°"},{id:"media_tecnica",label:"🔧 Media Técnica",desc:"Grados 10° y 11°"}].map(n=>(
+              <div key={n.id} style={S.opcion(nivelEdu===n.id)} onClick={()=>setNivelEdu(n.id)}>
+                <p style={S.oLbl}>{n.label}</p><p style={S.oDesc}>{n.desc}</p>
+              </div>
+            ))}
+          </div>
+          <button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!nivelEdu){alert("Selecciona el nivel");return;}setPaso(2);}}>Continuar →</button>
+        </div>)}
+
+        {paso===2&&(<div style={S.bloque}>
+          <button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(1)}>← Volver</button>
+          <h2 style={S.tBloque}>📋 Información de la clase</h2>
+          <div style={{...S.fila,marginBottom:10}}><div style={{flex:2}}><p style={S.label}>Institución</p><input style={S.input} value={institucion} onChange={e=>setInstitucion(e.target.value)}/></div></div>
+          <div style={{...S.fila,marginBottom:10}}><div style={{flex:2}}><p style={S.label}>Docente</p><input style={S.input} value={docente} onChange={e=>setDocente(e.target.value)}/></div><div style={{flex:1}}><p style={S.label}>Periodo</p><select style={S.select} value={periodo} onChange={e=>setPeriodo(e.target.value)}>{["1","2","3","4"].map(p=><option key={p}>Periodo {p}</option>)}</select></div></div>
+          <div style={{...S.fila,marginBottom:10}}>
+            <div style={{flex:1}}><p style={S.label}>Área</p><select style={S.select} value={area} onChange={e=>setArea(e.target.value)}><option value="">Seleccionar</option>{["Ciencias Naturales","Ciencias Sociales","Matemáticas","Lengua Castellana","Inglés","Educación Física","Artística","Ética y Valores","Tecnología e Informática","Filosofía","Química","Física","Biología"].map(m=><option key={m}>{m}</option>)}</select></div>
+            <div style={{flex:1}}><p style={S.label}>Grado</p><select style={S.select} value={grado} onChange={e=>setGrado(e.target.value)}><option value="">Seleccionar</option>{(nivelEdu==="preescolar"?["Transición"]:nivelEdu==="primaria"?["1°","2°","3°","4°","5°"]:nivelEdu==="media_tecnica"?["10°","11°"]:["6°","7°","8°","9°","10°","11°"]).map(g=><option key={g}>{g}</option>)}</select></div>
+          </div>
+          <div style={{...S.fila,marginBottom:10}}><div style={{flex:2}}><p style={S.label}>Tema</p><input style={S.input} placeholder="Ej: El verbo to be" value={tema} onChange={e=>setTema(e.target.value)}/></div><div style={{flex:1}}><p style={S.label}>Duración</p><select style={S.select} value={duracion} onChange={e=>setDuracion(e.target.value)}>{OPT_DURACION.map(d=><option key={d.val} value={d.val}>{d.label}</option>)}</select></div></div>
+          <div style={{marginBottom:18}}><p style={S.label}>Fecha</p><input type="date" style={{...S.input,width:"auto"}} value={fecha} onChange={e=>setFecha(e.target.value)}/></div>
+          <button style={S.btnVerde} onClick={()=>{if(!area||!grado||!tema){alert("Completa área, grado y tema");return;}setPaso(3);}}>Continuar →</button>
+        </div>)}
+
+        {paso===3&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(2)}>← Volver</button><h2 style={S.tBloque}>🚀 ¿Cómo iniciar la clase?</h2><Opciones lista={optApertura} val={apertura} set={setApertura}/><button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!apertura){alert("Selecciona apertura");return;}setPaso(4);}}>Continuar →</button></div>)}
+        {paso===4&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(3)}>← Volver</button><h2 style={S.tBloque}>⚙️ ¿Cómo desarrollar el contenido?</h2><Opciones lista={optDesarrollo} val={desarrollo} set={setDesarrollo}/><button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!desarrollo){alert("Selecciona estrategia");return;}setPaso(5);}}>Continuar →</button></div>)}
+        {paso===5&&(<div style={S.bloque}><button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(4)}>← Volver</button><h2 style={S.tBloque}>🔄 ¿Cómo verificar el aprendizaje?</h2><Opciones lista={optRetro} val={retro} set={setRetro}/><button style={{...S.btnVerde,marginTop:18}} onClick={()=>{if(!retro){alert("Selecciona estrategia");return;}setPaso(6);}}>Continuar →</button></div>)}
+
+        {paso===6&&(<div style={S.bloque}>
+          <button style={{...S.btnSm,marginBottom:12}} onClick={()=>setPaso(5)}>← Volver</button>
+          <h2 style={S.tBloque}>🏁 Cierre y tarea</h2>
+          <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>Estrategia de cierre</p>
+          <Opciones lista={OPT_CIERRE} val={cierre} set={setCierre}/>
+          <div style={S.sep}/>
+          <p style={{color:C.texto,fontWeight:"bold",marginBottom:10,fontFamily:F_TITULO}}>¿Dejar tarea?</p>
+          <div style={{...S.fila,marginBottom:14}}>
+            <div style={{...S.opcion(dejaTarea===true),flex:1}} onClick={()=>setDejaTarea(true)}><p style={S.oLbl}>✅ Sí</p></div>
+            <div style={{...S.opcion(dejaTarea===false),flex:1}} onClick={()=>{setDejaTarea(false);setTarea("");}}><p style={S.oLbl}>❌ No</p></div>
+          </div>
+          {dejaTarea===true&&<Opciones lista={OPT_TAREA} val={tarea} set={setTarea}/>}
+          <button style={{...S.btnVerde,marginTop:18,opacity:cargando?0.7:1}} disabled={cargando} onClick={()=>{if(!cierre){alert("Selecciona cierre");return;}if(dejaTarea===null){alert("Indica si hay tarea");return;}if(dejaTarea&&!tarea){alert("Selecciona estrategia de tarea");return;}generarGuia();}}>
+            {cargando?"⏳ Generando guía...":"✨ Generar guía completa"}
+          </button>
+        </div>)}
+
+        {paso===7&&(<div>
+          {!cargando&&contenido&&!contenido.startsWith("❌")&&(
+            <>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+                <span style={S.chip}>📚 {area}</span><span style={S.chip}>🎓 {grado}</span>
+                <span style={S.chip}>⏱️ {OPT_DURACION.find(d=>d.val===duracion)?.label}</span>
+                <span style={S.chip}>{nivelEdu==="bachillerato"?"📗 Bachillerato":nivelEdu==="preescolar"?"🌱 Preescolar":nivelEdu==="media_tecnica"?"🔧 Media Técnica":"📘 Primaria"}</span>
+              </div>
+              <div style={{...S.fila,marginBottom:18,flexWrap:"wrap",gap:7}}>
+                <button style={{...S.btnAzul,width:"auto",padding:"10px 16px"}} onClick={()=>exportar("word")} disabled={descargando}>{descargando?"⏳...":"📥 Word"}</button>
+                <button style={{...S.btnNaranja,width:"auto",padding:"10px 16px"}} onClick={()=>exportar("pdf")} disabled={descPdf}>{descPdf?"⏳...":"📄 PDF"}</button>
+                {!guardadoOk?<button style={{...S.btnVerde,width:"auto",padding:"10px 16px",opacity:guardando?0.7:1}} onClick={guardarClase} disabled={guardando}>{guardando?"💾...":"💾 Guardar"}</button>
+                  :<span style={{...S.chip,background:"#052e16",borderColor:C.ok,color:C.ok,padding:"10px 14px"}}>✅ Guardada</span>}
+                <button style={{...S.btnGris,width:"auto"}} onClick={()=>setVista("dashboard")}>🏠</button>
+                <button style={{...S.btnGris,width:"auto"}} onClick={reset}>+ Nueva</button>
+              </div>
+            </>
+          )}
+          {cargando&&(<div style={{...S.resultado,textAlign:"center",padding:52}}><p style={{fontSize:40,margin:"0 0 12px"}}>✨</p><p style={{color:C.azulC,fontSize:17,fontFamily:F_TITULO}}>Generando tu guía...</p><p style={{color:C.textoS,fontSize:13,marginTop:6}}>La IA está diseñando tu clase completa.</p></div>)}
+          {!cargando&&contenido&&(<div style={S.resultado}><h2 style={{color:C.azulC,fontSize:18,marginBottom:4,marginTop:0,fontFamily:F_TITULO}}>📄 {tema}</h2><p style={{color:C.textoS,fontSize:12,marginBottom:18}}>{area} · {grado} · {OPT_DURACION.find(d=>d.val===duracion)?.label}</p><div style={S.sep}/><pre style={S.pre}>{contenido}</pre></div>)}
+        </div>)}
+      </div>
     </div>
   );
 }
