@@ -320,6 +320,7 @@ export default function App() {
   const [gradosDisp,setGradosDisp]=useState([]);
   const [estsPorGrado,setEstsPorGrado]=useState([]);
   const [estSelIds,setEstSelIds]=useState([]);
+  const [busqEst,setBusqEst]=useState("");
 
   // ── Portal estudiante ─────────────────────────────────
   const [estVista,setEstVista]=useState("login"); // login, registro, dashboard, resolver
@@ -465,6 +466,7 @@ export default function App() {
   const crearTarea=async()=>{
     if(!ntTitulo){alert("Completa el título");return;}
     if(ntAsignacion==="grado"&&!ntGradoSel){alert("Selecciona el grado");return;}
+    if(ntAsignacion==="individual"&&estSelIds.length===0){alert("Selecciona al menos un estudiante de la lista");return;}
     setCreandoTarea(true);
     const lista=ntEstudiantes.split("\n").map(s=>s.trim()).filter(s=>s.length>0);
     try{
@@ -480,17 +482,41 @@ export default function App() {
   };
 
   const cargarGrados=async()=>{
-    try{const r=await fetch(`${API}/grados-disponibles`);const d=await r.json();setGradosDisp(d.grados||[]);}catch(_){}
+    try{
+      const r=await fetch(`${API}/grados-disponibles`);
+      const d=await r.json();
+      setGradosDisp(d.grados||[]);
+    }catch(e){console.error("cargarGrados error:",e);}
   };
   const cargarEstsPorGrado=async(grado)=>{
     if(!grado)return;
-    try{const r=await fetch(`${API}/estudiantes-grado/${grado}`);const d=await r.json();setEstsPorGrado(d.estudiantes||[]);}catch(_){}
+    try{
+      const r=await fetch(`${API}/estudiantes-grado/${encodeURIComponent(grado)}`);
+      const d=await r.json();
+      setEstsPorGrado(d.estudiantes||[]);
+    }catch(e){console.error("cargarEstsPorGrado error:",e);}
   };
+  const buscarEstudiante=async(q)=>{
+    if(!q||q.length<2){setEstsPorGrado([]);return;}
+    try{
+      const r=await fetch(`${API}/buscar-estudiante?q=${encodeURIComponent(q)}`);
+      const d=await r.json();
+      setEstsPorGrado(d.estudiantes||[]);
+    }catch(e){console.error("buscarEstudiante error:",e);}
+  };
+
+  const [listadoCompleto,setListadoCompleto]=useState([]);
+  const [filtroEntregas,setFiltroEntregas]=useState("todos"); // todos|entregaron|pendientes
 
   const verEntregas=async(t)=>{
     setTareaActiva(t);
-    try{const r=await fetch(`${API}/entregas-tarea/${t.id}`);const d=await r.json();setEntregas(d.entregas||[]);setSinEntregar(d.sinEntregar||[]);}
-    catch{alert("Error cargando entregas");}
+    try{
+      const r=await fetch(`${API}/entregas-tarea/${t.id}`);
+      const d=await r.json();
+      setEntregas(d.entregas||[]);
+      setSinEntregar(d.sinEntregar||[]);
+      setListadoCompleto(d.listadoCompleto||[]);
+    }catch{alert("Error cargando entregas");}
     setVista("ver_entregas");
   };
   const calificar=async()=>{
@@ -584,16 +610,26 @@ export default function App() {
       {/* Registro estudiante */}
       {estVista==="registro"&&(
         <div style={{...S.pantalla,paddingTop:20}}>
-          <div style={{...S.card,maxWidth:460}}>
+          <div style={{...S.card,maxWidth:480}}>
             <h1 style={{...S.titulo,color:C.ok,fontSize:20}}>Crear cuenta de estudiante</h1>
-            <div><p style={S.label}>Nombre completo *</p><input style={S.input} placeholder="Ej: Juan Pérez" value={estNombre} onChange={e=>setEstNombre(e.target.value)}/></div>
-            <div><p style={S.label}>Usuario * (sin espacios)</p><input style={S.input} placeholder="Ej: juanperez2024" value={estUsuario} onChange={e=>setEstUsuario(e.target.value.toLowerCase().replace(/\s+/g,""))}/></div>
-            <div><p style={S.label}>Contraseña *</p><input type="password" style={S.input} placeholder="Mínimo 6 caracteres" value={estPassword} onChange={e=>setEstPassword(e.target.value)}/></div>
-            <div style={S.fila}>
-              <div style={{flex:1}}><p style={S.label}>Grado</p><select style={S.select} value={estGrado} onChange={e=>setEstGrado(e.target.value)}><option value="">Seleccionar</option>{["Transición","1°","2°","3°","4°","5°","6°","7°","8°","9°","10°","11°"].map(g=><option key={g}>{g}</option>)}</select></div>
-              <div style={{flex:1}}><p style={S.label}>Institución</p><input style={S.input} placeholder="Nombre del colegio" value={estInstitucion} onChange={e=>setEstInstitucion(e.target.value)}/></div>
+            <p style={S.sub}>Si ya estás en la lista del colegio ingresa tu número de documento para activar tu cuenta automáticamente.</p>
+            <div style={{background:"#0f2a47",borderRadius:8,padding:"10px 14px",border:`1px solid ${C.azul}`,marginBottom:6}}>
+              <p style={{color:C.azulC,fontWeight:"bold",margin:"0 0 4px",fontSize:13}}>🔑 Si estás en el registro del colegio:</p>
+              <p style={{color:C.textoS,fontSize:12,margin:0}}>Tu usuario ya existe. Ingresa tu documento y elige una nueva contraseña para activarla.</p>
             </div>
-            <button style={S.btnVerde} onClick={registrarEstudiante}>Crear mi cuenta</button>
+            <div><p style={S.label}>Número de documento *</p><input style={S.input} placeholder="Ej: 1118073076" value={estInstitucion} onChange={e=>setEstInstitucion(e.target.value)} onKeyDown={e=>e.key==="Tab"&&e.target.blur()}/></div>
+            <div><p style={S.label}>Usuario * (puedes usar el que te asignaron o crear uno nuevo)</p><input style={S.input} placeholder="Ej: almayad076 o elige el tuyo" value={estUsuario} onChange={e=>setEstUsuario(e.target.value.toLowerCase().replace(/[^a-z0-9]/g,""))}/></div>
+            <div><p style={S.label}>Contraseña * (mínimo 6 caracteres)</p><input type="password" style={S.input} placeholder="Elige una contraseña segura" value={estPassword} onChange={e=>setEstPassword(e.target.value)}/></div>
+            <div><p style={S.label}>Nombre completo (si no estás en la lista)</p><input style={S.input} placeholder="Solo si no estás registrado en el colegio" value={estNombre} onChange={e=>setEstNombre(e.target.value)}/></div>
+            <button style={S.btnVerde} onClick={async()=>{
+              if(!estUsuario||!estPassword){setEstMsg("Completa usuario y contraseña");return;}
+              try{
+                const r=await fetch(`${API}/registro-estudiante`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre:estNombre||estUsuario,usuario:estUsuario,password:estPassword,documento:estInstitucion,grado:estGrado})});
+                const d=await r.json();
+                if(r.ok){setEstMsg("✅ "+d.mensaje);setTimeout(()=>{setEstVista("login");setEstMsg("");},2000);}
+                else setEstMsg(d.mensaje||"Error");
+              }catch{setEstMsg("Error de conexión");}
+            }}>Activar / Crear mi cuenta</button>
             <button style={S.btnGris} onClick={()=>setEstVista("login")}>← Ya tengo cuenta</button>
             {estMsg&&<p style={estMsg.includes("✅")?S.ok_msg:S.err}>{estMsg}</p>}
           </div>
@@ -831,7 +867,7 @@ export default function App() {
         <div style={S.bloque}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
             <h2 style={S.tBloque}>📋 Gestión de Tareas</h2>
-            <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setVista("crear_tarea");}}>+ Nueva tarea</button>
+            <button style={{...S.btnAzul,width:"auto",padding:"9px 16px"}} onClick={()=>{setTareaCreada(null);setNtTitulo("");setNtDesc("");setNtEstudiantes("");setNtFecha("");setNtActividad(null);setNtAsignacion("individual");setNtGradoSel("");setEstSelIds([]);setEstsPorGrado([]);setBusqEst("");setVista("crear_tarea");}}>+ Nueva tarea</button>
           </div>
           {misTareas.length===0?(
             <div style={{textAlign:"center",padding:"36px 20px"}}>
@@ -1012,76 +1048,95 @@ export default function App() {
   if(vista==="ver_entregas"&&tareaActiva) return(
     <div style={S.fondo}><Header/>
       <div style={S.contenedor}>
-        <button style={{...S.btnSm,marginBottom:16}} onClick={()=>setVista("tareas")}>← Tareas</button>
+        <button style={{...S.btnSm,marginBottom:14}} onClick={()=>setVista("tareas")}>← Tareas</button>
         <div style={S.bloque}>
-          <h2 style={S.tBloque}>📊 {tareaActiva.titulo}</h2>
-          <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
-            <span style={S.chip}>{TIPOS_ACTIVIDAD.find(x=>x.id===tareaActiva.tipo)?.label}</span>
-            <span style={S.chip}>📚 {tareaActiva.area}</span>
-            <span style={{...S.chip,borderColor:C.ok,color:C.ok}}>✅ {entregas.length} entregaron</span>
-            <span style={{...S.chip,borderColor:C.err,color:C.err}}>⏳ {sinEntregar.length} pendientes</span>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:14}}>
+            <div>
+              <h2 style={{...S.tBloque,margin:"0 0 4px"}}>{tareaActiva.titulo}</h2>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <span style={S.chip}>{TIPOS_ACTIVIDAD.find(x=>x.id===tareaActiva.tipo)?.label}</span>
+                <span style={S.chip}>📚 {tareaActiva.area} · Grado {tareaActiva.grado}</span>
+                {tareaActiva.fechaEntrega&&<span style={{...S.chip,borderColor:C.naranja,color:C.naranja}}>📅 {tareaActiva.fechaEntrega}</span>}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{background:"#052e16",border:`1px solid ${C.ok}`,borderRadius:10,padding:"8px 14px",textAlign:"center"}}>
+                <p style={{color:C.ok,fontSize:20,fontWeight:"bold",margin:0}}>{entregas.length}</p>
+                <p style={{color:C.textoS,fontSize:10,margin:0}}>Entregaron</p>
+              </div>
+              <div style={{background:"#2d0a0a",border:`1px solid ${C.rojo}`,borderRadius:10,padding:"8px 14px",textAlign:"center"}}>
+                <p style={{color:C.err,fontSize:20,fontWeight:"bold",margin:0}}>{sinEntregar.length}</p>
+                <p style={{color:C.textoS,fontSize:10,margin:0}}>Pendientes</p>
+              </div>
+            </div>
           </div>
 
+          {/* Filter tabs */}
+          <div style={{display:"flex",gap:6,marginBottom:16,borderBottom:`1px solid ${C.borde}`,paddingBottom:10}}>
+            {[["todos","📋 Todos"+(listadoCompleto.length>0?` (${listadoCompleto.length})`:"")],["entregaron","✅ Entregaron"+(entregas.length>0?` (${entregas.length})`:"")],["pendientes","⏳ Pendientes"+(sinEntregar.length>0?` (${sinEntregar.length})`:"")]].map(([id,lbl])=>(
+              <button key={id} style={{...S.btnSm,color:filtroEntregas===id?C.azulC:C.textoS,borderColor:filtroEntregas===id?C.azul:C.borde,background:filtroEntregas===id?"#0f2a47":"transparent"}} onClick={()=>setFiltroEntregas(id)}>{lbl}</button>
+            ))}
+          </div>
+
+          {/* Panel calificar */}
           {calEntregaId&&(
-            <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:16,marginBottom:18}}>
-              <h3 style={{color:C.azulC,margin:"0 0 12px"}}>✏️ Calificar entrega</h3>
+            <div style={{background:"#0f2a47",border:`1px solid ${C.azul}`,borderRadius:10,padding:16,marginBottom:16}}>
+              <h3 style={{color:C.azulC,margin:"0 0 12px",fontSize:14}}>✏️ Calificar entrega</h3>
               <div style={S.fila}>
-                <div style={{flex:1}}><p style={S.label}>Calificación</p><input style={S.input} placeholder="Ej: 4.5 / Excelente / 85%" value={calNota} onChange={e=>setCalNota(e.target.value)}/></div>
+                <div style={{flex:1}}><p style={S.label}>Calificación (escala 0-5)</p><input style={S.input} placeholder="Ej: 4.5" value={calNota} onChange={e=>setCalNota(e.target.value)}/></div>
               </div>
-              <div style={{marginTop:10}}><p style={S.label}>Comentario / corrección</p><textarea style={S.textarea} placeholder="Observaciones para el estudiante..." value={calComentario} onChange={e=>setCalComentario(e.target.value)}/></div>
+              <div style={{marginTop:10}}><p style={S.label}>Comentario / corrección para el estudiante</p><textarea style={S.textarea} placeholder="Escribe observaciones o retroalimentación..." value={calComentario} onChange={e=>setCalComentario(e.target.value)}/></div>
               <div style={{...S.fila,marginTop:12}}>
-                <button style={{...S.btnVerde,width:"auto",padding:"9px 18px"}} onClick={calificar}>💾 Guardar calificación</button>
+                <button style={{...S.btnVerde,width:"auto",padding:"9px 18px"}} onClick={calificar}>💾 Guardar nota</button>
                 <button style={{...S.btnGris,width:"auto"}} onClick={()=>{setCalEntregaId(null);setCalNota("");setCalComentario("");}}>Cancelar</button>
               </div>
             </div>
           )}
 
-          {entregas.length>0&&(
-            <>
-              <p style={{color:C.ok,fontWeight:"bold",margin:"0 0 10px"}}>📤 Entregas recibidas ({entregas.length})</p>
-              {entregas.map(e=>(
-                <div key={e.id} style={{background:"#0a1128",border:`1px solid ${C.borde}`,borderRadius:10,padding:14,marginBottom:8}}>
-                  <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                    <div style={{flex:1}}>
-                      <p style={{color:C.texto,fontWeight:"bold",margin:"0 0 3px"}}>{e.nombreEstudiante}</p>
-                      <p style={{color:C.textoS,fontSize:11,margin:"0 0 5px"}}>📅 {new Date(e.entregadoEn).toLocaleString("es-CO")}</p>
-                      {e.respuesta&&<p style={{color:"#CBD5E1",fontSize:12,margin:"0 0 5px",fontStyle:"italic",background:"#0d1528",padding:"6px 10px",borderRadius:6}}>"{e.respuesta.substring(0,150)}{e.respuesta.length>150?"...":""}"</p>}
-                      {e.respuestasActividad&&e.resultadoDetalle&&(
-                        <div style={{marginTop:6}}>
-                          <p style={{color:C.textoS,fontSize:11,margin:"0 0 4px"}}>📊 {e.resultadoDetalle.correctas}/{e.resultadoDetalle.total} correctas — {e.resultadoDetalle.porcentaje}%</p>
-                          {e.resultadoDetalle.detalle?.slice(0,3).map((d,i)=>(
-                            <p key={i} style={{color:d.esCorrecta?C.ok:C.err,fontSize:11,margin:"0 0 2px"}}>{d.esCorrecta?"✅":"❌"} P{i+1}: {d.respEst}</p>
+          {/* Full student list */}
+          {(filtroEntregas==="todos"?listadoCompleto:filtroEntregas==="entregaron"?entregas:sinEntregar).map((est,i)=>{
+            const entregada = est.entregada!==undefined?est.entregada:est.estado!=="pendiente";
+            const entregaId = est.entregaId||est.id;
+            return(
+              <div key={i} style={{background:entregada?"#0a1128":"#130a0a",border:`1px solid ${entregada?C.borde:C.rojo+"44"}`,borderRadius:10,padding:"12px 14px",marginBottom:7}}>
+                <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontSize:14}}>{entregada?"✅":"⏳"}</span>
+                      <p style={{color:entregada?C.texto:C.textoS,fontWeight:"bold",margin:0,fontSize:14}}>{est.nombreEstudiante}</p>
+                      {est.grado&&<span style={{...S.badge(C.azul),fontSize:10}}>Grado {est.grado}°</span>}
+                      {est.autoCalificada&&<span style={{...S.badge(C.verde),fontSize:10}}>Auto ✓</span>}
+                    </div>
+                    {entregada&&est.entregadoEn&&<p style={{color:C.textoS,fontSize:11,margin:"0 0 4px"}}>Entregado: {new Date(est.entregadoEn).toLocaleString("es-CO")}</p>}
+                    {entregada&&est.respuesta&&<p style={{color:"#CBD5E1",fontSize:12,margin:"0 0 4px",fontStyle:"italic",background:"#0d1528",padding:"5px 10px",borderRadius:6}}>"{est.respuesta.substring(0,120)}{est.respuesta.length>120?"...":""}"</p>}
+                    {entregada&&est.resultadoDetalle&&(
+                      <div style={{marginTop:4}}>
+                        <p style={{color:C.textoS,fontSize:11,margin:"0 0 3px"}}>📊 {est.resultadoDetalle.correctas}/{est.resultadoDetalle.total} correctas — {est.resultadoDetalle.porcentaje}% — Nota auto: <strong style={{color:C.ok}}>{est.resultadoDetalle.nota}</strong></p>
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                          {est.resultadoDetalle.detalle?.map((d,di)=>(
+                            <span key={di} style={{background:d.esCorrecta?"#052e16":"#2d0a0a",border:`1px solid ${d.esCorrecta?C.ok:C.err}`,color:d.esCorrecta?C.ok:C.err,fontSize:10,padding:"1px 7px",borderRadius:20}}>P{di+1} {d.esCorrecta?"✓":"✗"}</span>
                           ))}
                         </div>
-                      )}
-                      {e.respuestasActividad&&!e.resultadoDetalle&&<p style={{color:C.textoS,fontSize:11,margin:"0 0 5px"}}>📝 {Object.keys(e.respuestasActividad).length} respuestas</p>}
-                      {e.archivoNombre&&<p style={{color:C.azulC,fontSize:11,margin:0}}>📎 {e.archivoNombre}</p>}
-                      {e.calificacion!=null&&<p style={{color:C.naranja,fontWeight:"bold",margin:"5px 0 0"}}>✅ Nota: {e.calificacion}{e.comentario&&` — ${e.comentario}`}</p>}
-                    </div>
-                    <div style={{display:"flex",gap:6,flexShrink:0}}>
-                      {e.archivoNombre&&<a href={`${API}/descargar-entrega/${e.tareaId}/${e.estudianteId||e.estudianteRegId}`} style={{...S.btnSm,color:C.azulC,borderColor:C.azul,textDecoration:"none",padding:"5px 10px",borderRadius:7,fontSize:11}}>⬇️</a>}
-                      <button style={{...S.btnSm,color:C.naranja,borderColor:C.naranja}} onClick={()=>{setCalEntregaId(e.id);setCalNota(e.calificacion||"");setCalComentario(e.comentario||"");}}>
-                        {e.calificacion!=null?"✏️ Editar":"📝 Calificar"}
+                      </div>
+                    )}
+                    {entregada&&est.archivoNombre&&<p style={{color:C.azulC,fontSize:11,margin:"3px 0 0"}}>📎 {est.archivoNombre}</p>}
+                    {est.calificacion!=null&&<p style={{color:C.naranja,fontWeight:"bold",fontSize:13,margin:"4px 0 0"}}>Nota: {est.calificacion}{est.comentario&&<span style={{color:C.textoS,fontWeight:"normal",fontSize:12}}> — {est.comentario}</span>}</p>}
+                    {!entregada&&<p style={{color:C.textoS,fontSize:12,margin:"3px 0 0",fontStyle:"italic"}}>Sin entregar</p>}
+                  </div>
+                  {entregada&&(
+                    <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
+                      {est.archivoNombre&&<a href={`${API}/descargar-entrega/${tareaActiva.id}/${est.estudianteId}`} style={{...S.btnSm,color:C.azulC,borderColor:C.azul,textDecoration:"none",padding:"5px 10px",borderRadius:7,fontSize:11}}>⬇️</a>}
+                      <button style={{...S.btnSm,color:est.calificacion!=null?C.textoS:C.naranja,borderColor:est.calificacion!=null?C.borde:C.naranja}}
+                        onClick={()=>{setCalEntregaId(entregaId);setCalNota(est.calificacion||"");setCalComentario(est.comentario||"");}}>
+                        {est.calificacion!=null?"✏️ Editar nota":"📝 Calificar"}
                       </button>
                     </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-            </>
-          )}
-
-          {sinEntregar.length>0&&(
-            <>
-              <p style={{color:C.err,fontWeight:"bold",margin:"14px 0 10px"}}>⏳ Pendientes ({sinEntregar.length})</p>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:7}}>
-                {sinEntregar.map((e,i)=>(
-                  <div key={i} style={{background:"#1a0a0a",border:`1px solid ${C.rojo}33`,borderRadius:8,padding:"8px 12px"}}>
-                    <p style={{color:C.textoS,margin:0,fontSize:12}}>{e.nombreEstudiante}</p>
-                  </div>
-                ))}
               </div>
-            </>
-          )}
+            );
+          })}
+          {listadoCompleto.length===0&&<p style={{color:C.textoS,textAlign:"center",padding:30,fontSize:14}}>Aún no hay estudiantes asignados a esta tarea.</p>}
         </div>
       </div>
     </div>
