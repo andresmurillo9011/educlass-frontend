@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 
-const API = "http://localhost:5000";
+const API = "https://educlass-backend-4kk0.onrender.com";
 const FT = "Georgia, 'Times New Roman', serif";
 const FC = "'Segoe UI', Arial, sans-serif";
 const GRADOS = ["6°","7°","8°","9°","10°","11°"];
